@@ -23,3 +23,9 @@ project/plugins/project/
 .project
 .settings/
 /bin/
+.gitignore.swp
+.idea/
+build.sbt
+out/
+project/
+src/
