@@ -26,5 +26,4 @@ project/plugins/project/
 .gitignore.swp
 .idea/
 .idea
-build.sbt
 out/
