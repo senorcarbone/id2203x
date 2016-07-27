@@ -27,5 +27,3 @@ project/plugins/project/
 .idea/
 build.sbt
 out/
-project/
-src/
