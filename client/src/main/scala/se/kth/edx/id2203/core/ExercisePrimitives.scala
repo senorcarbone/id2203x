@@ -1,21 +1,26 @@
+package se.kth.edx.id2203.core
+
 import java.net.{InetAddress, InetSocketAddress}
 
-import se.sics.kompics.network.netty.DirectMessage
-import se.sics.kompics.network.{Address, Network, Transport}
-import se.sics.kompics.sl._
+import se.kth.edx.id2203.core.Ports._
+
 import se.sics.kompics.{Init, KompicsEvent}
+import se.sics.kompics.network.{Address, Network, Transport}
+import se.sics.kompics.network.netty.DirectMessage
+import se.sics.kompics.sl.{ComponentDefinition, _}
+
 
 package object ExercisePrimitives {
 
 
-  object AddressUtils{
-    
+  object AddressUtils {
+
     def toAddress(x: Int): Address = {
       TAddress(new InetSocketAddress(InetAddress.getByName("192.168.2." + x.toString), 1000))
     }
-    
+
   }
-  
+
   final case class TAddress(isa: InetSocketAddress) extends Address {
     override def asSocket(): InetSocketAddress = isa;
 
@@ -27,15 +32,6 @@ package object ExercisePrimitives {
       this.isa.equals(other.asSocket());
     }
   }
-  
-  // Define Perfect Point-to-Point Link
-  case class Pp2pDeliver(src: Address, payload: KompicsEvent) extends KompicsEvent;
-  case class Pp2pSend(dest: Address, payload: KompicsEvent) extends KompicsEvent;
-
-  class PerfectP2PLink extends Port {
-    indication[Pp2pDeliver];
-    request[Pp2pSend];
-  }
 
   case class PP2PInit(selfAddr: Address) extends Init[PP2P];
 
@@ -45,7 +41,7 @@ package object ExercisePrimitives {
 
     val pp2p = provides[PerfectP2PLink];
     val network = requires[Network];
-    
+
     val self = pp2pInit.selfAddr;
 
     pp2p uponEvent {

@@ -1,41 +1,28 @@
 ////HOMEWORK 2 - Implement Causal Order Reliable Broadcast, defined bellow
-//
+
 package se.kth.edx.id2203.templates
 
-import ExercisePrimitives._
+import se.kth.edx.id2203.core.ExercisePrimitives._
+import se.kth.edx.id2203.core.Ports._
 import se.sics.kompics.network._
-import se.sics.kompics.simulator.util.GlobalView
 import se.sics.kompics.simulator.{SimulationScenario => JSimulationScenario}
-import se.sics.kompics.sl._
-import se.sics.kompics.sl.simulator.Distributions
+import se.sics.kompics.sl.{Init, _}
 import se.sics.kompics.timer.Timer
-import se.sics.kompics.{Init, ComponentDefinition => _, Port => _, _}
+import se.sics.kompics.{ComponentDefinition => _, Port => _, _}
 
 import scala.collection.mutable
 import scala.collection.mutable._
 
 //Best Effort Broadcast
 
-case class BEB_Deliver(src: Address, payload: KompicsEvent) extends KompicsEvent;
-
-case class BEB_Broadcast(payload: KompicsEvent) extends KompicsEvent;
-
-class BestEffortBroadcast extends Port {
-  indication[BEB_Deliver];
-  request[BEB_Broadcast];
-}
-
-case class BasicBroadcastInit(selfAddr: Address, topology: Set[Address]) extends Init[BasicBroadcast];
-
-class BasicBroadcast(init: BasicBroadcastInit) extends ComponentDefinition {
+class BasicBroadcast(init: Init[BasicBroadcast]) extends ComponentDefinition {
 
   //BasicBroadcast Subscriptions
   val pp2p = requires[PerfectP2PLink];
   val beb = provides[BestEffortBroadcast];
 
   //BasicBroadcast Component State and Initialization
-  val self = init.selfAddr;
-  val topology = init.topology;
+  val (self, topology) = init match { case Init(s: Address, t: Set[Address] @unchecked) => (s, t) };
 
   //BasicBroadcast Event Handlers
   beb uponEvent {
@@ -53,29 +40,18 @@ class BasicBroadcast(init: BasicBroadcastInit) extends ComponentDefinition {
 
 //Reliable Broadcast
 
-case class RB_Deliver(src: Address, payload: KompicsEvent) extends KompicsEvent;
-
-case class RB_Broadcast(payload: KompicsEvent) extends KompicsEvent;
-
-class ReliableBroadcast extends Port {
-  indication[RB_Deliver];
-  request[RB_Broadcast];
-}
-
-case class EagerReliableBroadcastInit(selfAddr: Address) extends Init[EagerReliableBroadcast];
-
-class EagerReliableBroadcast(init: EagerReliableBroadcastInit) extends ComponentDefinition {
+class EagerReliableBroadcast(init: Init[EagerReliableBroadcast]) extends ComponentDefinition {
   //EagerReliableBroadcast Subscriptions
   val beb = requires[BestEffortBroadcast];
   val rb = provides[ReliableBroadcast];
 
   //EagerReliableBroadcast Component State and Initialization
-  val self = init.selfAddr;
+  val self = init match {case Init(s: Address) => s};
   val delivered = mutable.Set[KompicsEvent]();
 
   //EagerReliableBroadcast Event Handlers
   rb uponEvent {
-    case x:RB_Broadcast => handle {
+    case x@RB_Broadcast(_) => handle {
       trigger(BEB_Broadcast(x) -> beb);
     }
   }
@@ -89,41 +65,31 @@ class EagerReliableBroadcast(init: EagerReliableBroadcastInit) extends Component
       }
     }
   }
-  
 }
 
 //Causal Reliable Broadcast
 
-case class CRB_Deliver(src: Address, payload: KompicsEvent) extends KompicsEvent;
 
-case class CRB_Broadcast(payload: KompicsEvent) extends KompicsEvent;
-
-class ReliableCausalOrderBroadcast extends Port {
-  indication[CRB_Deliver];
-  request[CRB_Broadcast];
-}
-
-case class WaitingCRBInit(selfAddr: Address, topology: Set[Address]) extends Init[WaitingCRB];
-
-class WaitingCRB(init: WaitingCRBInit) extends ComponentDefinition {
+class WaitingCRB(init: Init[WaitingCRB]) extends ComponentDefinition {
 
   //WaitingCRB Subscriptions
   val rb = requires[ReliableBroadcast];
   val crb = provides[ReliableCausalOrderBroadcast];
 
   //WaitingCRB Component State and Initialization
-  val self = init.selfAddr;
-  val V = VectorClock.empty(init.topology.toSeq)
-  var pending :ListBuffer[(Address, DataMessage)] = ListBuffer();
+  val (self, vec) = init match { case Init(s: Address, t: Set[Address] @unchecked) => (s,  VectorClock.empty(t.toSeq)) };
+ 
+//  val V = VectorClock.empty(init match { case Init(_, t: Set[Address]) => t.toSeq })
+  var pending: ListBuffer[(Address, DataMessage)] = ListBuffer();
   var lsn = 0;
 
   //Declare custom message types related to internal component implementation
   case class DataMessage(timestamp: VectorClock, payload: KompicsEvent) extends KompicsEvent;
-  
+
   //WaitingCRB Event Handlers
   crb uponEvent {
     case x: CRB_Broadcast => handle {
-      val W = VectorClock(V);
+      val W = VectorClock(vec);
       W.set(self, lsn);
       lsn = lsn + 1;
       trigger(RB_Broadcast(DataMessage(W, x.payload)) -> rb);
@@ -131,12 +97,12 @@ class WaitingCRB(init: WaitingCRBInit) extends ComponentDefinition {
   }
 
   rb uponEvent {
-    case x@RB_Deliver(src:Address, msg:DataMessage) => handle {
+    case x@RB_Deliver(src: Address, msg: DataMessage) => handle {
       pending += (src -> msg);
-      val toDeliver = pending.filter {case (_, data) => data.timestamp <= V}
-      toDeliver.foreach { case tpl@(addr:Address, data:DataMessage) =>
+      val toDeliver = pending.filter { case (_, data) => data.timestamp <= vec}
+      toDeliver.foreach { case tpl@(addr: Address, data: DataMessage) =>
         pending -= tpl;
-        V.inc(addr);
+        vec.inc(addr);
         trigger(CRB_Deliver(addr, data.payload) -> crb)
       };
     }
@@ -145,54 +111,58 @@ class WaitingCRB(init: WaitingCRBInit) extends ComponentDefinition {
 
 
 // - Program interfaces for Simulation
-case class CRBIntercInit(self: Address) extends Init[CRBInterceptor];
 
-class CRBInterceptor(init: CRBIntercInit) extends ComponentDefinition {
-  
-  val self = init.self;
+class CRBInterceptor(init: Init[CRBInterceptor]) extends ComponentDefinition {
+
+  val self = init match { case Init(s: Address) => s};
   val crb = requires[ReliableCausalOrderBroadcast];
 
   crb uponEvent {
-    case CRB_Deliver(src,payload) => handle {
+    case CRB_Deliver(src, payload) => handle {
       //TODO
     }
   }
 
 }
 
-case class CRBParentInit(selfAddr: Address, topology: Set[Address]) extends Init[EPFDParent];
+class CRBParent(init: Init[CRBParent]) extends ComponentDefinition {
 
-class CRBParent(init: CRBParentInit) extends ComponentDefinition {
+  val (selfAddr, topology) = init match { case Init(s: Address, t: Set[Address] @unchecked) => (s, t)};
 
   val network: PositivePort[Network] = requires[Network];
   val timer = requires[Timer];
-  val pp2p = create(classOf[PP2P], PP2PInit(init.selfAddr));
-  
-  val beb = create(classOf[BasicBroadcast], BasicBroadcastInit(init.selfAddr, init.topology));
-  val rb = create(classOf[EagerReliableBroadcast], EagerReliableBroadcastInit(init.selfAddr));
-  val crb = create(classOf[WaitingCRB], WaitingCRBInit(init.selfAddr, init.topology));
-  
-  val interceptor = create(classOf[EPFDInterceptor], EPFDIntercInit(init.selfAddr));
+  val pp2p = create(classOf[PP2P], PP2PInit(selfAddr));
+
+  val beb = create(classOf[BasicBroadcast], Init[BasicBroadcast](selfAddr, topology));
+  val rb = create(classOf[EagerReliableBroadcast], Init[EagerReliableBroadcast](selfAddr));
+  val crb = create(classOf[WaitingCRB], Init[WaitingCRB](selfAddr, topology));
+
+  val interceptor = create(classOf[CRBInterceptor], Init[CRBInterceptor](selfAddr));
 
   connect[Network](network -> pp2p);
   connect[PerfectP2PLink](pp2p -> beb);
   connect[BestEffortBroadcast](beb -> rb);
   connect[ReliableBroadcast](rb -> crb);
   connect[ReliableCausalOrderBroadcast](crb -> interceptor);
-  
+
 }
 
 
 case class CRBValidation(numNodes: Int) {
-  
-  import Distributions._
 
   val topology = (1 to numNodes).map(AddressUtils.toAddress(_)).toList;
-  
-  
-  
-  
+  //FIXME
+
+
 }
+
+
+object BEBTemplate extends App  {
+  val seed = 123;
+  JSimulationScenario.setSeed(seed);
+//  ValidationSimulation.runAndValidate(BEBTemplate.scenario);
+}
+
 
 
 

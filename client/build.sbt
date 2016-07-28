@@ -1,10 +1,13 @@
-name := "KompicsTeaching"
+val kompicsVersion = "0.9.2-SNAPSHOT"
 
-version := "1.0"
+
+name := "KompicsTeaching"
 
 organization := "se.kth.edx"
 
 scalaVersion := "2.11.8"
+
+version := kompicsVersion
 
 scalacOptions ++= Seq("-deprecation","-feature")
 
@@ -12,7 +15,6 @@ resolvers += Resolver.mavenLocal
 resolvers += "Kompics Releases" at "http://kompics.sics.se/maven/repository/"
 resolvers += "Kompics Snapshots" at "http://kompics.sics.se/maven/snapshotrepository/"
 
-val kompicsVersion = "0.9.2-SNAPSHOT"
 
 libraryDependencies += "se.sics.kompics" % "kompics-core" % kompicsVersion
 libraryDependencies += "se.sics.kompics" % "kompics-scala_2.11" % kompicsVersion
@@ -25,6 +27,10 @@ libraryDependencies += "se.sics.kompics.basic" % "kompics-component-netty-networ
 libraryDependencies += "org.scalactic" %% "scalactic" % "2.2.6"
 libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.6" % "test"
 libraryDependencies += "ch.qos.logback" % "logback-classic" % "0.9.28" % "test"
+
+
+libraryDependencies ++= Seq("org.slf4j" % "slf4j-api" % "1.7.5",
+  "org.slf4j" % "slf4j-simple" % "1.7.5")
 
 publishMavenStyle := true
 //credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")

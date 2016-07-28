@@ -1,10 +1,10 @@
 package org.apache.zeppelin.kompics.validation
 
-import ExercisePrimitives.AddressUtils
 import org.junit.Assert._
 import org.junit.Test
 import org.scalatest.junit.AssertionsForJUnit
-import se.kth.edx.id2203.validation.validation.{Property, SimValidator, ValidationGroup, ValidationSimulation}
+import se.kth.edx.id2203.core.ExercisePrimitives.AddressUtils
+import se.kth.edx.id2203.validation.ValidationUtils._
 import se.sics.kompics.network._
 import se.sics.kompics.simulator.SimulationScenario
 import se.sics.kompics.simulator.util.GlobalView
