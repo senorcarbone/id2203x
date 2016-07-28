@@ -79,9 +79,6 @@ object EPFDTester {
 
     import Distributions._
 
-//   val javaType = asJavaClass[EPFDParent](typeOf[EPFDParent]);
-//    javaType.getConstructor(Init[EPFDParent[C]](AddressUtils.toAddress(2)).getClass)
-    
     val topology = (1 to numNodes).map(AddressUtils.toAddress(_)).toList;
 
     //FIXME

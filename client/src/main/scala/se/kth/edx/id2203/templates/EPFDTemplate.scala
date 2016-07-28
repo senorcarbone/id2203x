@@ -8,7 +8,7 @@ import se.sics.kompics.network._
 import se.sics.kompics.sl._
 import se.sics.kompics.sl.Init
 import se.sics.kompics.timer.{ScheduleTimeout, Timeout, Timer}
-import se.sics.kompics.{ComponentDefinition => _, Port => _, _}
+import se.sics.kompics.{ComponentDefinition => _, Port => _, Start, KompicsEvent}
 import scala.collection.mutable._
 
 

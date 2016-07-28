@@ -27,10 +27,9 @@ libraryDependencies += "se.sics.kompics.basic" % "kompics-component-netty-networ
 libraryDependencies += "org.scalactic" %% "scalactic" % "2.2.6"
 libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.6" % "test"
 libraryDependencies += "ch.qos.logback" % "logback-classic" % "0.9.28" % "test"
-
-
 libraryDependencies ++= Seq("org.slf4j" % "slf4j-api" % "1.7.5",
   "org.slf4j" % "slf4j-simple" % "1.7.5")
+
 
 publishMavenStyle := true
 //credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
