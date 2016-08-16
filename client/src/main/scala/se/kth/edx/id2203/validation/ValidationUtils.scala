@@ -1,7 +1,6 @@
 package se.kth.edx.id2203.validation
 
 import se.kth.edx.id2203.core.ExercisePrimitives.AddressUtils
-
 import java.io.{FileInputStream, FileOutputStream, ObjectInputStream, ObjectOutputStream}
 
 import se.sics.kompics.network.Network
@@ -17,33 +16,53 @@ import se.sics.kompics.sl.simulator.{Op, StartNode}
 import se.sics.kompics.{Init, ComponentDefinition => _, Port => _, _}
 import se.sics.kompics.timer.Timer
 import Distributions._
+
 import scala.collection.mutable
 
-package object ValidationUtils {
+import spray.json._
+import spray.json.DefaultJsonProtocol._
+
+
+ 
+object ValidationUtils {
 
   case class PropertyObserverInit(properties: Iterable[ValidationGroup], terminateOnInvalid: Boolean = false) extends Init[PropertyObserver];
 
-
-  case class SimValidator(predicate: GlobalView => Boolean, triggerTime: Long, successMsg: String = "", failureMsg: String = "") {
-
-    var valid = false;
-    var triggered = false;
-
-    def validate(currentView: GlobalView): Boolean = {
-      triggered = true;
-      valid = predicate(currentView);
-      valid
-    }
-
-    override def toString(): String = if (valid) s"PASSED: $successMsg" else s"FAILED: $failureMsg"
+  case class ValidationResult(valid: Boolean, msg: String){
+    override def toString(): String = (if (valid) "PASSED: " else "FAILED: ") + msg; 
   }
 
-  case class ValidationGroup(description: String, validators: Iterable[SimValidator]) {
+  case class SimValidator(predicate: GlobalView => Boolean, triggerTime: Long, successMsg: String = "", 
+                          failureMsg: String = "") {
+    var passed = false;
+    var triggered = true;
+    
+    def validate(currentView: GlobalView): ValidationResult = {
+      if(!triggered) {
+        passed = predicate(currentView);
+        triggered = true;
+      }
+      getResult()
+    }
+    
+    def getResult() : ValidationResult = {
+      if(triggered){
+        ValidationResult(passed, if(passed) successMsg else failureMsg);
+      }
+      else{
+        ValidationResult(false, "Validation was never triggered")
+      }
+    }
+  }
+  
+  case class PropertyResult(id: String, valid: Boolean, points: Int = 1);
 
-    def isValid(): Boolean = !validators.exists(x => !x.valid);
+  case class ValidationGroup(id: String, validators: Iterable[SimValidator]) {
+
+    def isValid(): Boolean = !validators.exists(x => !x.getResult().valid);
 
     override def toString(): String = {
-      val str1 = s"$description :: ${if (isValid()) "SATISFIED" else "VIOLATED"} \n";
+      val str1 = s"$id :: ${if (isValid()) "SATISFIED" else "VIOLATED"} \n";
       var str2 = s"---------------------------------------\n";
       validators.foreach(x => str2 = str2 + x.toString() + "\n");
       return str1 + str2;
@@ -89,6 +108,8 @@ package object ValidationUtils {
   }
 
   object ValidationSimulation {
+
+    implicit val propsFormat = jsonFormat3(PropertyResult)
 
     def apply(props: ValidationGroup*) = {
       val startValidator = Op((_:Unit) => StartNode(AddressUtils.toAddress(0), PropertyObserverInit(props.toSet)));
@@ -157,7 +178,7 @@ package object ValidationUtils {
     timer uponEvent {
       case PropertyCheck(_, token) => handle {
         println(s"PropertyObserver Executing Validator $token");
-        val passed = unregister(token).get.validate(getGlobalView());
+        val passed = unregister(token).get.validate(getGlobalView()).valid;
         if ((terminateOnInvalid && !passed) || pendingValidations.isEmpty) finalizeExecution();
       }
     }
