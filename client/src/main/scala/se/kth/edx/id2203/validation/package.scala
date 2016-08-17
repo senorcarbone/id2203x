@@ -1,30 +1,56 @@
 package se.kth.edx.id2203.validation
 
-import ValidationUtils.ValidationSimulation._
-import scala.reflect.runtime.universe._
+import se.kth.edx.id2203.validation.ValidationUtils.ValidationSimulation._
 import se.kth.edx.id2203.validation.testers.EPFDTester
 import se.sics.kompics.sl._
-import se.sics.kompics.{ComponentDefinition => _, Port => _, _}
+import se.sics.kompics.{ComponentDefinition => _, Port => _}
+import spray.json.DefaultJsonProtocol._
 import spray.json._
-import DefaultJsonProtocol._
+
+import scala.reflect.runtime.universe._
 
 
 object validation {
   
-  case class GradingToken(token: Array[Byte]);
+  
+  val startframeMsg = " * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * \n" +
+                 " -----------------------VALIDATION RESULTS----------------------------- \n";
+  
+  val endframeMsg =  " * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * \n"
+    
+  val successMsg = (id: String) => 
+    s"Congratulations! Your implementation of the '$id' satisfies all properties! " +
+    s"\nA unique token has been generated for your submission right below. Please do not edit. \n";
+  
+  val errorMsg = (id: String) =>
+    s"Unfortunately your implementation of the '$id' does not satisfy all properties. " + s"" + 
+      s"\nPlease make sure your implementation covers all guarantees and try again. "
+  
+  val finalMsg = "Final Comments\n" +
+                 "--------------";  
+
+  case class GradingToken(gradingToken: Array[Byte]);
+
   implicit val gradingFormat = jsonFormat1(GradingToken)
   
-  def checkEPFD[T <: ComponentDefinition : TypeTag]() : Unit = {
-      val props =  EPFDTester[T]();
-      val passed = !props.exists(!_.isValid());
-      println(props.toString());
-//      if(passed){
-        println("Congratulations! You have passed this part. A unique token has been generated for your submission. Please do not edit.");
-        println(GradingToken(Encryptor.encrypt(Grading.gradeEPFD(props).toJson.toString)).toJson.toString);
-//      }
-    
-  }
   
+  def checkEPFD[T <: ComponentDefinition : TypeTag](): Unit = {
+    val componentId = "Eventually Perfect Failure Detector";
+    val props = EPFDTester[T]();
+    val passed = !props.exists(!_.isValid());
+    println(startframeMsg);
+    props.foreach(println(_));
+    println(finalMsg)
+    if (!passed) {
+      println(successMsg(componentId));
+      println(GradingToken(Encryptor.encrypt(Grading.gradeEPFD(props).toJson.toString)).toJson.toString);
+    }
+    else{
+      println(errorMsg(componentId));
+    }
+    println(endframeMsg);
+  }
+
 }
 
 

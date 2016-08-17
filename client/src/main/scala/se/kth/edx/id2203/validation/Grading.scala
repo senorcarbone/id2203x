@@ -1,19 +1,14 @@
 package se.kth.edx.id2203.validation
 
-import se.kth.edx.id2203.validation.ValidationUtils.{PropertyResult, ValidationGroup}
+import se.kth.edx.id2203.validation.ValidationUtils.{PropertyResult, ValidationGroup, ValidationReport}
+
+
+//FIXME put grades
 
 object Grading {
   
-  def gradeEPFD(results: Iterable[ValidationGroup]): Iterable[PropertyResult] = {
-    def convert(validationGroup: ValidationGroup): PropertyResult = {
-      validationGroup match {
-        case ValidationGroup("Eventual Correctness", _) => registerGrade(validationGroup, 10);
-        case _ => registerGrade(validationGroup, 1)
-      }
-    }
-    results.map(convert)
+  def gradeEPFD(results: Iterable[ValidationGroup]): ValidationReport = {
+    ValidationReport("Eventually Perfect Failure Detector", !results.exists(!_.isValid()), 
+      results.map(x => PropertyResult(x.id, x.isValid())),10);
   }
-
-  def registerGrade(vGroup: ValidationGroup, grade: Int): PropertyResult = PropertyResult(vGroup.id, vGroup.isValid(), grade);
-
 }

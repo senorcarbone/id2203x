@@ -29,7 +29,7 @@ object ValidationUtils {
   case class PropertyObserverInit(properties: Iterable[ValidationGroup], terminateOnInvalid: Boolean = false) extends Init[PropertyObserver];
 
   case class ValidationResult(valid: Boolean, msg: String){
-    override def toString(): String = (if (valid) "PASSED: " else "FAILED: ") + msg; 
+    override def toString(): String = (if (valid) "✔: " else "✘: ") + msg; 
   }
 
   case class SimValidator(predicate: GlobalView => Boolean, triggerTime: Long, successMsg: String = "", 
@@ -55,19 +55,22 @@ object ValidationUtils {
     }
   }
   
-  case class PropertyResult(id: String, valid: Boolean, points: Int = 1);
-
+  case class PropertyResult(id: String, valid: Boolean);
+  
   case class ValidationGroup(id: String, validators: Iterable[SimValidator]) {
 
     def isValid(): Boolean = !validators.exists(x => !x.getResult().valid);
-
+    
     override def toString(): String = {
-      val str1 = s"$id :: ${if (isValid()) "SATISFIED" else "VIOLATED"} \n";
-      var str2 = s"---------------------------------------\n";
-      validators.foreach(x => str2 = str2 + x.toString() + "\n");
+      val padding = "   ";
+      val str1 = s"-> $id :: ${if (isValid()) "SATISFIED" else "VIOLATED"} \n";
+      var str2 = "";
+      validators.foreach(x => str2 = str2 + padding + x.getResult() + "\n");
       return str1 + str2;
     }
   }
+
+  case class ValidationReport(id: String, valid: Boolean, properties: Iterable[PropertyResult], points: Int = 1);
 
   object Property {
 
@@ -109,7 +112,8 @@ object ValidationUtils {
 
   object ValidationSimulation {
 
-    implicit val propsFormat = jsonFormat3(PropertyResult)
+    implicit val propsFormat = jsonFormat2(PropertyResult)
+    implicit val reportFormat = jsonFormat4(ValidationReport)
 
     def apply(props: ValidationGroup*) = {
       val startValidator = Op((_:Unit) => StartNode(AddressUtils.toAddress(0), PropertyObserverInit(props.toSet)));
