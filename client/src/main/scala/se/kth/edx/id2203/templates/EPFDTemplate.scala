@@ -47,7 +47,7 @@ class EPFD(epfdInit: Init[EPFD]) extends ComponentDefinition {
   ctrl uponEvent {
     case _: Start => handle {
       println("EPFD Started");
-      startTimer(period);
+        startTimer(period);
     }
   }
 

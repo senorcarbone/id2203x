@@ -10,7 +10,7 @@ import se.sics.kompics.network.netty.DirectMessage
 import se.sics.kompics.sl.{ComponentDefinition, _}
 
 
-package object ExercisePrimitives {
+object ExercisePrimitives {
 
 
   object AddressUtils {

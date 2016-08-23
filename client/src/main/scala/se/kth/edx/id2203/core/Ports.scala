@@ -41,7 +41,7 @@ object Ports {
   case class CRB_Deliver(src: Address, payload: KompicsEvent) extends KompicsEvent;
   case class CRB_Broadcast(payload: KompicsEvent) extends KompicsEvent;
 
-  class ReliableCausalOrderBroadcast extends Port {
+  class CausalOrderReliableBroadcast extends Port {
     indication[CRB_Deliver];
     request[CRB_Broadcast];
   }

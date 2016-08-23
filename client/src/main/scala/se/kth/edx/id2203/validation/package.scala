@@ -1,7 +1,8 @@
 package se.kth.edx.id2203.validation
 
+import se.kth.edx.id2203.validation.ValidationUtils.ValidationGroup
 import se.kth.edx.id2203.validation.ValidationUtils.ValidationSimulation._
-import se.kth.edx.id2203.validation.testers.EPFDTester
+import se.kth.edx.id2203.validation.testers._
 import se.sics.kompics.sl._
 import se.sics.kompics.{ComponentDefinition => _, Port => _}
 import spray.json.DefaultJsonProtocol._
@@ -34,23 +35,34 @@ object validation {
   implicit val gradingFormat = jsonFormat1(GradingToken)
   
   
-  def checkEPFD[T <: ComponentDefinition : TypeTag](): Unit = {
-    val componentId = "Eventually Perfect Failure Detector";
-    val props = EPFDTester[T]();
+  def checkEPFD[EPFDTYPE <: ComponentDefinition : TypeTag](): Unit = 
+    validateAndPrint("Eventually Perfect Failure Detector", EPFDTester[EPFDTYPE]())
+  
+  
+  def checkBEB[BEBTYPE <: ComponentDefinition : TypeTag]() : Unit =
+    validateAndPrint("Best Effort Broadcast", BEBTester[BEBTYPE]())
+
+//  def checkRB[BEBTYPE <: ComponentDefinition : TypeTag, RBTYPE <: ComponentDefinition : TypeTag]() : Unit =
+//    validateAndPrint("Reliable Broadcast", CRBTester[BEBTYPE, RBTYPE]())
+//
+//  def checkCRB[BEBTYPE <: ComponentDefinition : TypeTag, RBTYPE <: ComponentDefinition : TypeTag, CRBTYPE <: ComponentDefinition : TypeTag]() : Unit =
+//    validateAndPrint("Causal Order Reliable Broadcast", CRBTester[BEBTYPE, RBTYPE, CRBTYPE]())
+  
+
+  def validateAndPrint(componentId: String, props: Iterable[ValidationGroup]): Unit = {
     val passed = !props.exists(!_.isValid());
     println(startframeMsg);
     props.foreach(println(_));
     println(finalMsg)
-    if (!passed) {
+    if (passed) {
       println(successMsg(componentId));
       println(GradingToken(Encryptor.encrypt(Grading.gradeEPFD(props).toJson.toString)).toJson.toString);
     }
-    else{
+    else {
       println(errorMsg(componentId));
     }
     println(endframeMsg);
   }
-
 }
 
 

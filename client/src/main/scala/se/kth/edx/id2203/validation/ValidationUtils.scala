@@ -35,7 +35,7 @@ object ValidationUtils {
   case class SimValidator(predicate: GlobalView => Boolean, triggerTime: Long, successMsg: String = "", 
                           failureMsg: String = "") {
     var passed = false;
-    var triggered = true;
+    var triggered = false;
     
     def validate(currentView: GlobalView): ValidationResult = {
       if(!triggered) {
