@@ -14,6 +14,7 @@ import scala.concurrent.duration._
 import akka.util.Timeout
 import spray.json._
 import spray.httpx.SprayJsonSupport._
+import com.larskroll.common.ActorDispatcher
 
 object SubmissionChecker {
     case class CheckSubmission(entity: HttpEntity)
@@ -26,12 +27,11 @@ class SubmissionChecker(val xfilemanager: ActorRef, val grader: ActorRef) extend
     import SubmissionChecker._;
     import XQueueJsonProtocol._;
     import XFileManager.Fetch;
-    
-    implicit val timeout = Timeout(60.seconds);
-    implicit val ec = context.dispatcher;
-    
 
-    def receive = {
+    implicit val timeout = Timeout(60.seconds);
+    implicit val ec = new ActorDispatcher(this)
+
+    def receive = ActorDispatcher.receive orElse {
         case CheckSubmission(entity) => {
             entity.as[XQueueRequest] match {
                 case Right(xqr) => self ! xqr
@@ -89,6 +89,7 @@ class SubmissionChecker(val xfilemanager: ActorRef, val grader: ActorRef) extend
         }
         case FailedPull(msg: String) => {
             log.warning(s"Got error on submission pull. Error was: $msg");
+            sender ! XQueueManager.GradingCompleted // just to adjust the count
         }
     }
 

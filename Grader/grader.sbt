@@ -13,6 +13,7 @@ resolvers += "Kompics Snapshots" at "http://kompics.sics.se/maven/snapshotreposi
 resolvers += "Spray Repo" at "http://repo.spray.io"
 
 
+libraryDependencies += "com.larskroll" %% "common-utils-scala" % "1.2"
 libraryDependencies += "ch.qos.logback" % "logback-classic" % "0.9.28"
 libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0"
 libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.3.9"

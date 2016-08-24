@@ -19,6 +19,7 @@ import scala.concurrent._
 import scala.concurrent.duration._
 import scala.util.{ Success, Failure }
 import spray.httpx.ResponseTransformation
+import com.larskroll.common.ActorDispatcher
 
 object XQueueManager {
     trait Request
@@ -26,12 +27,12 @@ object XQueueManager {
     case object GetQueueLength extends Request
     case object PullSubmission extends Request
     case class QueueLength(n: Int) extends Response
+    case object GradingCompleted extends Response
 }
 
 class XQueueManager extends Actor with ActorLogging {
     import XQueueManager._;
     import XQueueJsonProtocol._;
-    import context.dispatcher;
     val config = context.system.settings.config
 
     implicit val timeout = Timeout(60.seconds);
@@ -44,7 +45,7 @@ class XQueueManager extends Actor with ActorLogging {
     def xqueuePushResponse(entity: HttpEntity): HttpRequest = {
         Post(xqueuePushPath, entity)
     }
-    
+
     implicit val LongUnmarshaller = new Unmarshaller[Long] {
         def apply(entity: HttpEntity) = try {
             val bodyS = entity.asString;
@@ -54,6 +55,8 @@ class XQueueManager extends Actor with ActorLogging {
             case e: Throwable => Left(MalformedContent(s"Couldn't deserialise $entity", e))
         }
     }
+
+    implicit val ec = new ActorDispatcher(this)
 
     val pipelineF: Future[SendReceive] =
         for (
@@ -79,12 +82,12 @@ class XQueueManager extends Actor with ActorLogging {
         }
     }
 
-    def receive = {
+    override def receive = ActorDispatcher.receive orElse {
         case GetQueueLength => {
             val reply = sender;
             executeRequest(xqueueLengthRequest) match {
                 case Left(rf) => rf map {
-                    case response => 
+                    case response =>
                         response.entity.as[Long] match {
                             case Right(len)  => Left(len);
                             case Left(error) => Right(error.toString())
@@ -99,7 +102,7 @@ class XQueueManager extends Actor with ActorLogging {
             val reply = sender;
             executeRequest(xqueuePullRequest) match {
                 case Left(rf) => rf map {
-                    case response => SubmissionChecker.CheckSubmission(response.entity)                        
+                    case response => SubmissionChecker.CheckSubmission(response.entity)
                 } recover {
                     case e => SubmissionChecker.FailedPull(e.getMessage)
                 } pipeTo reply
@@ -107,21 +110,28 @@ class XQueueManager extends Actor with ActorLogging {
             }
         }
         case xqr: XQueueResponse => {
+            val reply = sender;
             log.info(s"Graded submission with result: $xqr");
-            marshal(xqr) match {
+            val fo = marshal(xqr) match {
                 case Right(entity) => executeRequest(xqueuePushResponse(entity)) match {
-                    case Left(rf) => rf map {
-                        case response => if (response.status.isSuccess) {
-                            log.info(s"Pushing to XQueue was successful: $response")
-                        } else {
-                            log.warning(s"Pushing to XQueue was unsuccessful. Error was: $response")
-                        }
-                    } recover {
-                        case e =>  log.warning(s"Pushing to XQueue was unsuccessful. Error was: $e")
-                    }
-                    case Right(msg) => log.warning(s"Pushing to XQueue was unsuccessful. Error was: $msg")
+                    case Left(rf) =>
+                        val ret = rf map {
+                            case response => if (response.status.isSuccess) {
+                                log.info(s"Pushing to XQueue was successful: $response")
+                            } else {
+                                log.warning(s"Pushing to XQueue was unsuccessful. Error was: $response")
+                            }
+                        } recover {
+                            case e => log.warning(s"Pushing to XQueue was unsuccessful. Error was: $e")
+                        };
+                        Some(ret)
+                    case Right(msg) => log.warning(s"Pushing to XQueue was unsuccessful. Error was: $msg"); None
                 }
-                case Left(error) => log.warning(s"Could not marshal response ($xqr): $error")
+                case Left(error) => log.warning(s"Could not marshal response ($xqr): $error"); None
+            }
+            fo match {
+                case Some(f) => f map {_ => GradingCompleted} pipeTo reply
+                case None => reply ! GradingCompleted
             }
         }
     }

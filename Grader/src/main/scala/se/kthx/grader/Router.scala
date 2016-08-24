@@ -2,7 +2,7 @@ package se.kthx.grader
 
 import akka.actor._
 import spray.routing._
-//import spray.routing.authentication.BasicAuth
+import spray.routing.authentication._
 //import spray.routing.directives.CachingDirectives._
 import spray.httpx.encoding._
 import spray.httpx.marshalling._
@@ -20,6 +20,7 @@ import spray.util._
 import spray.json._
 import spray.httpx.SprayJsonSupport._
 import spray.caching._
+import com.typesafe.config.Config
 
 class Router extends Actor with ActorLogging with GradingService {
     def receive = runRoute(route)
@@ -27,6 +28,7 @@ class Router extends Actor with ActorLogging with GradingService {
     //def selfRef = self;
     def ec = context.dispatcher;
     def logger = log;
+    def config = context.system.settings.config
 }
 
 trait GradingService extends HttpService {
@@ -36,6 +38,7 @@ trait GradingService extends HttpService {
     import XQueueJsonProtocol._
 
     def logger: LoggingAdapter;
+    def config: Config;
     implicit def ec: ExecutionContext;
     def routeCache(maxCapacity: Int = 500, initialCapacity: Int = 16, timeToLive: Duration = Duration.Inf,
                    timeToIdle: Duration = Duration.Inf): Cache[RouteResponse] =
@@ -56,6 +59,8 @@ trait GradingService extends HttpService {
 
     val respond = respondWithMediaType(`text/html`) & handleExceptions(debugHandler) & complete;
 
+    def extractUser(userPass: UserPass): String = userPass.user
+
     val route: Route = {
         get {
             pathEndOrSingleSlash {
@@ -65,6 +70,17 @@ trait GradingService extends HttpService {
             } ~ path("status") {
                 respond {
                     showStatus()
+                }
+            } ~ path("shutdown") {
+                authenticate(BasicAuth(realm = "KTHx Grader", createUser = extractUser _)) { userName =>
+                    respond {
+                        (grader ? Grader.Shutdown) map {
+                            case Grader.ShutdownAck(msg) => HTMLLayout.withText(msg, "warn").render
+                            case _                       => HTMLLayout.withText("Shutdown command not acknowledged!", "bad").render
+                        } recover {
+                            case _ => HTMLLayout.withText("Shutdown command not acknowledged!", "bad").render
+                        }
+                    }
                 }
             } ~ cache(routeCache(maxCapacity = 16, initialCapacity = 4, timeToLive = 60.seconds)) {
                 getFromResourceDirectory("WEB-INF")
@@ -80,9 +96,10 @@ trait GradingService extends HttpService {
                 HTMLLayout.withText(s"Current grading queue length is ${ql.n}", "good").render
             case Right(qu) =>
                 HTMLLayout.withText(s"Could not get grading queue length. Reason: ${qu.msg}", "bad").render
-        }.recover { case e =>
-            logger.warning(s"Couldn't get xqueue length. Error was:\n	$e");
-            HTMLLayout.withText("Queue status unkown.", "bad").render
+        }.recover {
+            case e =>
+                logger.warning(s"Couldn't get xqueue length. Error was:\n	$e");
+                HTMLLayout.withText("Queue status unkown.", "bad").render
         }
     }
 }

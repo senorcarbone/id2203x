@@ -104,6 +104,9 @@ textarea {
 .bad {
     color: red;
 }
+.warn {
+    color: yellow;
+}
 
 .mainbox {
     margin: auto;
