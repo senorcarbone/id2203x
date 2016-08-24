@@ -7,7 +7,6 @@ import se.sics.kompics.sl._
 object Ports {
 
   case class Pp2pDeliver(src: Address, payload: KompicsEvent) extends KompicsEvent;
-
   case class Pp2pSend(dest: Address, payload: KompicsEvent) extends KompicsEvent;
 
   class PerfectP2PLink extends Port {
@@ -16,7 +15,6 @@ object Ports {
   }
 
   case class Suspect(src: Address) extends KompicsEvent;
-
   case class Restore(src: Address) extends KompicsEvent;
 
   class EventuallyPerfectFailureDetector extends Port {
@@ -25,7 +23,6 @@ object Ports {
   }
 
   case class BEB_Deliver(src: Address, payload: KompicsEvent) extends KompicsEvent;
-
   case class BEB_Broadcast(payload: KompicsEvent) extends KompicsEvent;
 
   class BestEffortBroadcast extends Port {
@@ -34,7 +31,6 @@ object Ports {
   }
 
   case class RB_Deliver(src: Address, payload: KompicsEvent) extends KompicsEvent;
-
   case class RB_Broadcast(payload: KompicsEvent) extends KompicsEvent;
 
   class ReliableBroadcast extends Port {
@@ -43,12 +39,26 @@ object Ports {
   }
 
   case class CRB_Deliver(src: Address, payload: KompicsEvent) extends KompicsEvent;
-
   case class CRB_Broadcast(payload: KompicsEvent) extends KompicsEvent;
 
-  class ReliableCausalOrderBroadcast extends Port {
+  class CausalOrderReliableBroadcast extends Port {
     indication[CRB_Deliver];
     request[CRB_Broadcast];
   }
+  
+  
+  case class AR_READ_REQUEST() extends KompicsEvent
+  case class AR_READ_RESPONSE(value: Int) extends KompicsEvent
+  case class AR_WRITE_REQUEST(value: Int) extends KompicsEvent
+  case class AR_WRITE_RESPONSE() extends KompicsEvent
+  
+  class AtomicRegister extends Port {
+    request[AR_READ_REQUEST]
+    request[AR_WRITE_REQUEST]
+    indication[AR_READ_RESPONSE]
+    indication[AR_WRITE_RESPONSE]
+  }
+  
+  
 
 }

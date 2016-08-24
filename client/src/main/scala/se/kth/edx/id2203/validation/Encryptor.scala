@@ -8,11 +8,7 @@ import javax.crypto.Cipher
 
 object Encryptor {
 
-  private val defkey = readPubKey("rsa/edx.pub");
-
-  def encrypt(publicKey: PublicKey, plainText: String): String = {
-    new String(encrypt(publicKey, plainText.toCharArray.map(_.toByte)))
-  }
+  private val defkey = readPubKey("rsa/edx-key-pub.der");
 
   def encrypt(publicKey: PublicKey, plainTxt: Array[Byte]): Array[Byte] = {
     val cipher = Cipher.getInstance("RSA/ECB/OAEPWithSHA1AndMGF1Padding");
@@ -20,12 +16,16 @@ object Encryptor {
     cipher.doFinal(plainTxt);
   }
 
-  def encrypt(plainText: String): String = {
-    encrypt(defkey, plainText)
-  }
-
   def encrypt(plainTxt: Array[Byte]): Array[Byte] = {
     encrypt(defkey, plainTxt)
+  }
+
+  def encrypt(plainTxt: String): Array[Byte] = {
+    encrypt(defkey, plainTxt.toCharArray.map(_.toByte))
+  }
+
+  def decrypt(privateKey: PrivateKey, encryptedRaw: String) : Array[Byte] = {
+    decrypt(privateKey, encryptedRaw.toCharArray.map(_.toByte))
   }
   
   def decrypt(privateKey: PrivateKey, encryptedRaw: Array[Byte]) : Array[Byte] = {
@@ -33,14 +33,13 @@ object Encryptor {
     cipher.init(Cipher.DECRYPT_MODE, privateKey);
     cipher.doFinal(encryptedRaw);
   }
-  
-  def decrypt(privateKey: PrivateKey, encryptedText: String) : String = {
-    new String(decrypt(privateKey, encryptedText.toCharArray.map(_.toByte)))
-  }
 
   def readPrivateKey(path: String) : PrivateKey = KeyFactory.getInstance("RSA").generatePrivate(new PKCS8EncodedKeySpec(readFileBytes(path)))
   
-  def readPubKey(path: String): PublicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(readFileBytes(path)))
+  def readPubKey(path: String): PublicKey = {
+    val pubKeyBytes = readFileBytes(path);
+    KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(pubKeyBytes))
+  }
 
   def readFileBytes(path: String): Array[Byte] = Files.readAllBytes(Paths.get(path))
 
