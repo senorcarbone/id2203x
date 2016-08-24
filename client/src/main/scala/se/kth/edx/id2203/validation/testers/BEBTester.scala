@@ -1,8 +1,9 @@
 package se.kth.edx.id2203.validation.testers
 
-import se.kth.edx.id2203.SimulationPrimitives.{ProxyInterceptor, ProxyInterceptorInit, ScheduleTriggers}
+import se.kth.edx.id2203.core.ExercisePrimitives.AddressUtils._
 import se.kth.edx.id2203.core.ExercisePrimitives.{AddressUtils, PP2P, PP2PInit}
 import se.kth.edx.id2203.core.Ports._
+import se.kth.edx.id2203.core.SimulationPrimitives.{ProxyInterceptor, ProxyInterceptorInit, ScheduleTriggers}
 import se.kth.edx.id2203.validation.ValidationUtils.{Property, SimValidator, ValidationGroup, ValidationSimulation}
 import se.sics.kompics.{KompicsEvent, Start}
 import se.sics.kompics.network.{Address, Network}
@@ -26,10 +27,10 @@ object BEBTester {
   val LOG_STATE = "simulation.delivered";
 
 
-  def apply[C <: ComponentDefinition : TypeTag](): collection.Iterable[ValidationGroup] = {
+  def apply[BEB_TYPE <: ComponentDefinition : TypeTag](): collection.Iterable[ValidationGroup] = {
     val seed = 123;
     SimulationScenario.setSeed(seed);
-    ValidationSimulation.runAndValidate(BEBValidation[C](10, 200).scenario);
+    ValidationSimulation.runAndValidate(BEBValidation[BEB_TYPE](10, 200).scenario);
   }
 
   class InterceptorPayload(id: Int) extends KompicsEvent;
@@ -64,6 +65,8 @@ object BEBTester {
     }
 
     override def getInterceptedPort(): PositivePort[BestEffortBroadcast] = beb
+
+    override def getSelfAddress(): Address = self
   }
   
 
@@ -98,11 +101,11 @@ object BEBTester {
     * 
     */
   
-  case class BEBValidation[C <: ComponentDefinition : TypeTag](numNodes: Int, maxLinkDelay: Long) {
+  case class BEBValidation[BEB_TYPE <: ComponentDefinition : TypeTag](numNodes: Int, maxLinkDelay: Long) {
 
     import Distributions._
 
-    val topology = (1 to numNodes).map(AddressUtils.toAddress(_)).toSet;
+    val topology = (1 to numNodes).map(toAddress(_)).toSet;
     
     //Simulation Operations ----
     val setupOp = Op((_: Unit) => Setup((gv: GlobalView) => gv.setValue(LOG_STATE, HashMap.empty[Address, ListBuffer[BEB_Deliver]])).build());
@@ -110,9 +113,9 @@ object BEBTester {
     val setNetwork = () => Op((maxDelay: java.lang.Long) =>
       ChangeNetwork(NetworkModels.withUniformRandomDelay(0, maxDelay, SimulationScenario.getRandom)));
 
-    val startBEB = Op((self: Integer) => StartNode(AddressUtils.toAddress(self), Init[BEBParent](AddressUtils.toAddress(self), topology, asJavaClass[C](typeOf[C]),
+    val startBEB = Op((self: Integer) => StartNode(toAddress(self), Init[BEBParent](toAddress(self), topology, asJavaClass[BEB_TYPE](typeOf[BEB_TYPE]),
       ScheduleTriggers(
-        (9000, BEB_Broadcast(new BroadcastedMessage(AddressUtils.toAddress(self), 1)))
+        (9000l, BEB_Broadcast(new BroadcastedMessage(toAddress(self), 1)))
       ))));
 
     val prop1 = 
@@ -144,7 +147,7 @@ object BEBTester {
     val scenario =
       ValidationSimulation(prop2,prop1) inParallel(
         raise(1, setupOp).arrival(Distributions.constant(0)), raise(1, setNetwork(), constant(0l)).arrival(constant(0)),
-        raise(numNodes, startBEB, 1.toN).arrival(constant(0))) andThen 10000.millis afterTermination  Terminate;
+        raise(numNodes, startBEB, 1.toN).arrival(constant(0))) andThen 1000000.millis afterTermination Terminate;
        
   }
 

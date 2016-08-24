@@ -3,17 +3,17 @@
 package se.kth.edx.id2203.templates
 
 
-import se.kth.edx.id2203.core.Ports._
 import se.kth.edx.id2203.core.ExercisePrimitives._
+import se.kth.edx.id2203.core.Ports._
+import se.kth.edx.id2203.templates.WaitingCRB._
 import se.kth.edx.id2203.validation.validation._
 import se.sics.kompics.network._
-import se.sics.kompics.sl._
-import se.sics.kompics.sl.Init
-import se.sics.kompics.timer.{Timer}
-import se.sics.kompics.{ComponentDefinition => _, Port => _, Start, _}
-import scala.collection.mutable._
+import se.sics.kompics.sl.{Init, _}
+import se.sics.kompics.{ComponentDefinition => _, Port => _, _}
+
+import scala.collection.immutable.Set
 import scala.collection.mutable
-import collection.immutable.Set
+import scala.collection.mutable._
 
 
 //Best Effort Broadcast
@@ -25,7 +25,9 @@ class BasicBroadcast(init: Init[BasicBroadcast]) extends ComponentDefinition {
   val beb = provides[BestEffortBroadcast];
 
   //BasicBroadcast Component State and Initialization
-  val (self, topology) = init match { case Init(s: Address, t: Set[Address] @unchecked) => (s, t) };
+  val (self, topology) = init match {
+    case Init(s: Address, t: Set[Address]@unchecked) => (s, t)
+  };
 
   //BasicBroadcast Event Handlers
   beb uponEvent {
@@ -41,7 +43,6 @@ class BasicBroadcast(init: Init[BasicBroadcast]) extends ComponentDefinition {
   }
 }
 
-//TODO uncomment
 //object BebCheck extends App  {
 //  checkBEB[BasicBroadcast]();
 //}
@@ -54,7 +55,9 @@ class EagerReliableBroadcast(init: Init[EagerReliableBroadcast]) extends Compone
   val rb = provides[ReliableBroadcast];
 
   //EagerReliableBroadcast Component State and Initialization
-  val self = init match {case Init(s: Address) => s};
+  val self = init match {
+    case Init(s: Address) => s
+  };
   val delivered = mutable.Set[KompicsEvent]();
 
   //EagerReliableBroadcast Event Handlers
@@ -75,12 +78,18 @@ class EagerReliableBroadcast(init: Init[EagerReliableBroadcast]) extends Compone
   }
 }
 
-//TODO uncomment
 //object RBCheck extends App  {
 //  checkRB[BasicBroadcast,EagerReliableBroadcast]();
 //}
 
 //Causal Reliable Broadcast
+
+//Declare custom message types related to internal component implementation
+
+object WaitingCRB {
+
+  case class DataMessage(timestamp: VectorClock, payload: KompicsEvent) extends KompicsEvent;
+}
 
 class WaitingCRB(init: Init[WaitingCRB]) extends ComponentDefinition {
 
@@ -89,14 +98,14 @@ class WaitingCRB(init: Init[WaitingCRB]) extends ComponentDefinition {
   val crb = provides[CausalOrderReliableBroadcast];
 
   //WaitingCRB Component State and Initialization
-  val (self, vec) = init match { case Init(s: Address, t: Set[Address] @unchecked) => (s,  VectorClock.empty(t.toSeq)) };
- 
-//  val V = VectorClock.empty(init match { case Init(_, t: Set[Address]) => t.toSeq })
+  val (self, vec) = init match {
+    case Init(s: Address, t: Set[Address]@unchecked) => (s, VectorClock.empty(t.toSeq))
+  };
+
+  //  val V = VectorClock.empty(init match { case Init(_, t: Set[Address]) => t.toSeq })
   var pending: ListBuffer[(Address, DataMessage)] = ListBuffer();
   var lsn = 0;
 
-  //Declare custom message types related to internal component implementation
-  case class DataMessage(timestamp: VectorClock, payload: KompicsEvent) extends KompicsEvent;
 
   //WaitingCRB Event Handlers
   crb uponEvent {
@@ -111,20 +120,23 @@ class WaitingCRB(init: Init[WaitingCRB]) extends ComponentDefinition {
   rb uponEvent {
     case x@RB_Deliver(src: Address, msg: DataMessage) => handle {
       pending += (src -> msg);
-      val toDeliver = pending.filter { case (_, data) => data.timestamp <= vec}
-      toDeliver.foreach { case tpl@(addr: Address, data: DataMessage) =>
-        pending -= tpl;
-        vec.inc(addr);
-        trigger(CRB_Deliver(addr, data.payload) -> crb)
-      };
+
+      while (pending.exists(_._2.timestamp <= vec)) {
+        pending.filter { case (_, data) => data.timestamp <= vec }.foreach {
+          case tpl@(addr: Address, data: DataMessage) =>
+            pending -= tpl;
+            vec.inc(addr);
+            trigger(CRB_Deliver(addr, data.payload) -> crb)
+        };
+      }
     }
   }
 }
 
-////TODO uncomment
-//object CRBCheck extends App  {
-//  checkCRB[BasicBroadcast,EagerReliableBroadcast,WaitingCRB]();
-//}
+
+object CRBCheck extends App {
+  checkCRB[BasicBroadcast, EagerReliableBroadcast, WaitingCRB]();
+}
 
 
 

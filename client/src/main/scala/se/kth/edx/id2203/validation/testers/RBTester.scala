@@ -1,8 +1,9 @@
 package se.kth.edx.id2203.validation.testers
 
-import se.kth.edx.id2203.SimulationPrimitives.{ProxyInterceptor, ProxyInterceptorInit, ScheduleTriggers}
+import se.kth.edx.id2203.core.ExercisePrimitives.AddressUtils._
 import se.kth.edx.id2203.core.ExercisePrimitives.{AddressUtils, PP2P, PP2PInit}
 import se.kth.edx.id2203.core.Ports._
+import se.kth.edx.id2203.core.SimulationPrimitives.{ProxyInterceptor, ProxyInterceptorInit, ScheduleTriggers}
 import se.kth.edx.id2203.validation.ValidationUtils.{Property, SimValidator, ValidationGroup, ValidationSimulation}
 import se.sics.kompics.{KompicsEvent, Start}
 import se.sics.kompics.network.{Address, Network}
@@ -64,6 +65,8 @@ object RBTester {
     }
 
     override def getInterceptedPort(): PositivePort[ReliableBroadcast] = rb
+
+    override def getSelfAddress(): Address = self
   }
 
   class RBParent(init: Init[RBParent]) extends ComponentDefinition {
@@ -105,22 +108,22 @@ object RBTester {
     import Distributions._
 
 
-    val topology = (1 to numNodes).map(AddressUtils.toAddress(_)).toSet;
-    val correct = (1 to discNodes).map(AddressUtils.toAddress(_)).toSet;
+    val topology = (1 to numNodes).map(toAddress(_)).toSet;
+    val correct = (1 to discNodes).map(toAddress(_)).toSet;
     
     //Simulation Operations ----
-    val setupOp = Op((_: Unit) => Setup((gv: GlobalView) => gv.setValue(LOG_STATE, HashMap.empty[Address, ListBuffer[BEB_Deliver]])).build());
+    val setupOp = Op((_: Unit) => Setup((gv: GlobalView) => gv.setValue(LOG_STATE, HashMap.empty[Address, ListBuffer[RB_Deliver]])).build());
 
     val setNetwork = () => Op((maxDelay: java.lang.Long) =>
       ChangeNetwork(NetworkModels.withUniformRandomDelay(0, maxDelay, SimulationScenario.getRandom)));
 
-    val startRB = Op((self: Integer) => StartNode(AddressUtils.toAddress(self), Init[RBParent](AddressUtils.toAddress(self), topology, 
+    val startRB = Op((self: Integer) => StartNode(toAddress(self), Init[RBParent](toAddress(self), topology, 
       asJavaClass[BEBTYPE](typeOf[BEBTYPE]), asJavaClass[RBTYPE](typeOf[RBTYPE]),
       ScheduleTriggers(
-        (9000, RB_Broadcast(new BroadcastedMessage(AddressUtils.toAddress(self), 1)))
+        (9000l, RB_Broadcast(new BroadcastedMessage(toAddress(self), 1)))
       ))));
 
-    val killOP = Op { (self: Integer) => KillNode(AddressUtils.toAddress(self)) }
+    val killOP = Op { (self: Integer) => KillNode(toAddress(self)) }
 
     val prop1 =
       Property("No Duplication-No Creation")
@@ -143,7 +146,7 @@ object RBTester {
     val prop2 =
       Property("Validity")
         .addValidator(SimValidator(_.getValue(LOG_STATE, classOf[mutable.HashMap[Address, ListBuffer[RB_Deliver]]])
-          .forall(_._2.foldLeft[Set[Address]](Set.empty[Address])((s,bebmsg) => s+bebmsg.src).containsAll(topology)), 109999,
+          .forall(_._2.foldLeft[Set[Address]](Set.empty[Address])((s,rbmsg) => s+rbmsg.src).containsAll(topology)), 109999,
           "Eventually every correct process delivers every message broadcasted by correct processes",
           "Not all messages broadcasted by correct processes are eventually delivered to all correct processes")).build();
 
@@ -151,7 +154,7 @@ object RBTester {
       Property("Agreement")
         .addValidator(SimValidator(_.getValue(LOG_STATE, classOf[mutable.HashMap[Address, ListBuffer[RB_Deliver]]])
           .filter(x => correct.contains(x._1)) //all correct nodes
-          .groupBy(_._2).size == 1 // have delivered the same messages
+          .groupBy(_._2.toSet).size == 1 // have delivered the same messages
           , 109999,
           "Every message delivered by a correct process is eventually delivered by every other correct process",
           "There exist messages delivered by a subset and not all of the correct processes")).build();

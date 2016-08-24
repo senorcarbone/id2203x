@@ -1,6 +1,6 @@
 package se.kth.edx.id2203.validation
 
-import se.kth.edx.id2203.validation.ValidationUtils.ValidationGroup
+import se.kth.edx.id2203.validation.ValidationUtils.{PropertyResult, ValidationGroup, ValidationReport}
 import se.kth.edx.id2203.validation.ValidationUtils.ValidationSimulation._
 import se.kth.edx.id2203.validation.testers._
 import se.sics.kompics.sl._
@@ -12,7 +12,6 @@ import scala.reflect.runtime.universe._
 
 
 object validation {
-  
   
   val startframeMsg = " * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * \n" +
                  " -----------------------VALIDATION RESULTS----------------------------- \n";
@@ -42,26 +41,32 @@ object validation {
   def checkBEB[BEBTYPE <: ComponentDefinition : TypeTag]() : Unit =
     validateAndPrint("Best Effort Broadcast", BEBTester[BEBTYPE]())
 
-//  def checkRB[BEBTYPE <: ComponentDefinition : TypeTag, RBTYPE <: ComponentDefinition : TypeTag]() : Unit =
-//    validateAndPrint("Reliable Broadcast", CRBTester[BEBTYPE, RBTYPE]())
-//
-//  def checkCRB[BEBTYPE <: ComponentDefinition : TypeTag, RBTYPE <: ComponentDefinition : TypeTag, CRBTYPE <: ComponentDefinition : TypeTag]() : Unit =
-//    validateAndPrint("Causal Order Reliable Broadcast", CRBTester[BEBTYPE, RBTYPE, CRBTYPE]())
+  def checkRB[BEBTYPE <: ComponentDefinition : TypeTag, RBTYPE <: ComponentDefinition : TypeTag]() : Unit =
+    validateAndPrint("Reliable Broadcast", RBTester[BEBTYPE, RBTYPE]())
+
+  def checkCRB[BEBTYPE <: ComponentDefinition : TypeTag, RBTYPE <: ComponentDefinition : TypeTag, CRBTYPE <: ComponentDefinition : TypeTag]() : Unit =
+    validateAndPrint("Causal Order Reliable Broadcast", CRBTester[BEBTYPE, RBTYPE, CRBTYPE]())
   
 
-  def validateAndPrint(componentId: String, props: Iterable[ValidationGroup]): Unit = {
+  def validateAndPrint(componentId: String, props: Iterable[ValidationGroup], maxPoints: Int = 1): Unit = {
     val passed = !props.exists(!_.isValid());
     println(startframeMsg);
     props.foreach(println(_));
     println(finalMsg)
     if (passed) {
       println(successMsg(componentId));
-      println(GradingToken(Encryptor.encrypt(Grading.gradeEPFD(props).toJson.toString)).toJson.toString);
+      println(GradingToken(Encryptor.encrypt(gradeComponent(componentId, props, maxPoints).toJson.toString)).toJson.toString);
     }
     else {
       println(errorMsg(componentId));
     }
     println(endframeMsg);
+  }
+  
+  
+  def gradeComponent(id: String, results: Iterable[ValidationGroup], points : Int): ValidationReport = {
+    ValidationReport(id, !results.exists(!_.isValid()),
+      results.map(x => PropertyResult(x.id, x.isValid())), points);
   }
 }
 

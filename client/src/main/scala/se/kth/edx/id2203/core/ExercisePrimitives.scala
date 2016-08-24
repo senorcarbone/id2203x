@@ -61,7 +61,7 @@ object ExercisePrimitives {
   case class VectorClock(var vc: Map[Address, Int]) {
 
     def inc(addr: Address) = {
-      vc = vc + ((addr, vc.get(addr).get));
+      vc = vc + ((addr, vc.get(addr).get + 1));
     }
 
     def set(addr: Address, value: Int) = {
