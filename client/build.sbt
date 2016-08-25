@@ -22,10 +22,13 @@ libraryDependencies += "se.sics.kompics" % "kompics-scala-simulator_2.11" % komp
 libraryDependencies += "se.sics.kompics.basic" % "kompics-component-java-timer" % kompicsVersion
 libraryDependencies += "se.sics.kompics.basic" % "kompics-port-network" % kompicsVersion
 libraryDependencies += "se.sics.kompics.basic" % "kompics-component-netty-network" % kompicsVersion
+libraryDependencies += "org.bouncycastle" % "bcpg-jdk15on" % "1.55"
+libraryDependencies += "org.bouncycastle" % "bcprov-jdk15on" % "1.55"
+libraryDependencies += "com.jsuereth" %% "scala-arm" % "1.4"
 
 //libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value
-libraryDependencies += "org.scalactic" %% "scalactic" % "2.2.6"
-libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.6" % "test"
+libraryDependencies += "org.scalactic" %% "scalactic" % "3.0.0" % "test"
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.0" % "test"
 libraryDependencies += "io.spray" %%  "spray-json" % "1.3.2"
 libraryDependencies += "ch.qos.logback" % "logback-classic" % "0.9.28" % "test"
 libraryDependencies ++= Seq("org.slf4j" % "slf4j-api" % "1.7.5", "org.slf4j" % "slf4j-simple" % "1.7.5")

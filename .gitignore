@@ -19,6 +19,7 @@ project/plugins/project/
 .DS_Store
 
 .cache-main
+.cache-tests
 .classpath
 .project
 .settings/
