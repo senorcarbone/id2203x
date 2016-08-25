@@ -2,8 +2,8 @@ package se.kth.edx.id2203.core
 
 import java.net.{InetAddress, InetSocketAddress}
 
+import se.kth.edx.id2203.core.ExercisePrimitives.PP2P._
 import se.kth.edx.id2203.core.Ports._
-
 import se.sics.kompics.{Init, KompicsEvent}
 import se.sics.kompics.network.{Address, Network, Transport}
 import se.sics.kompics.network.netty.DirectMessage
@@ -17,6 +17,10 @@ object ExercisePrimitives {
 
     def toAddress(x: Int): Address = {
       TAddress(new InetSocketAddress(InetAddress.getByName("192.168.2." + x.toString), 1000))
+    }
+    
+    def toRank(addr: Address): Int = {
+      return addr.getIp().getAddress()(3).toInt;
     }
 
   }
@@ -33,10 +37,11 @@ object ExercisePrimitives {
     }
   }
 
-  case class PP2PInit(selfAddr: Address) extends Init[PP2P];
-
-  case class Pp2pMessage(src: Address, dest: Address, payload: KompicsEvent) extends DirectMessage(src, dest, Transport.TCP);
-
+  object PP2P{  
+    case class PP2PInit(selfAddr: Address) extends Init[PP2P];
+    case class Pp2pMessage(src: Address, dest: Address, payload: KompicsEvent) extends DirectMessage(src, dest, Transport.TCP); 
+  }
+  
   class PP2P(pp2pInit: PP2PInit) extends ComponentDefinition {
 
     val pp2p = provides[PerfectP2PLink];
