@@ -48,8 +48,8 @@ object Ports {
   
   
   case class AR_READ_REQUEST() extends KompicsEvent
-  case class AR_READ_RESPONSE(value: Int) extends KompicsEvent
-  case class AR_WRITE_REQUEST(value: Int) extends KompicsEvent
+  case class AR_READ_RESPONSE(value: Option[AnyRef]) extends KompicsEvent
+  case class AR_WRITE_REQUEST(value: Option[AnyRef]) extends KompicsEvent
   case class AR_WRITE_RESPONSE() extends KompicsEvent
   
   class AtomicRegister extends Port {
