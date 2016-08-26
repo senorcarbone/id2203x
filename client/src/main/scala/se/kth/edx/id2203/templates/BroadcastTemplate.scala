@@ -21,7 +21,7 @@ import scala.collection.mutable._
 class BasicBroadcast(init: Init[BasicBroadcast]) extends ComponentDefinition {
 
   //BasicBroadcast Subscriptions
-  val pp2p = requires[PerfectP2PLink];
+  val pp2p = requires[PerfectLink];
   val beb = provides[BestEffortBroadcast];
 
   //BasicBroadcast Component State and Initialization
@@ -32,12 +32,12 @@ class BasicBroadcast(init: Init[BasicBroadcast]) extends ComponentDefinition {
   //BasicBroadcast Event Handlers
   beb uponEvent {
     case x: BEB_Broadcast => handle {
-      topology.foreach(addr => trigger(Pp2pSend(addr, x) -> pp2p));
+      topology.foreach(addr => trigger(PL_Send(addr, x) -> pp2p));
     }
   }
 
   pp2p uponEvent {
-    case Pp2pDeliver(src, BEB_Broadcast(payload)) => handle {
+    case PL_Deliver(src, BEB_Broadcast(payload)) => handle {
       trigger(BEB_Deliver(src, payload) -> beb);
     }
   }
@@ -134,9 +134,9 @@ class WaitingCRB(init: Init[WaitingCRB]) extends ComponentDefinition {
 }
 
 
-object CRBCheck extends App {
-  checkCRB[BasicBroadcast, EagerReliableBroadcast, WaitingCRB]();
-}
+//object CRBCheck extends App {
+//  checkCRB[BasicBroadcast, EagerReliableBroadcast, WaitingCRB]();
+//}
 
 
 

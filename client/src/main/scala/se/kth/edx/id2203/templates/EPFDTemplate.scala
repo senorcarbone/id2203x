@@ -27,7 +27,7 @@ class EPFD(epfdInit: Init[EPFD]) extends ComponentDefinition {
 
   //EPFD subscriptions
   val timer = requires[Timer];
-  val pp2p = requires[PerfectP2PLink];
+  val pp2p = requires[PerfectLink];
   val epfd = provides[EventuallyPerfectFailureDetector];
 
   // EPDF component state and initialization
@@ -69,7 +69,7 @@ class EPFD(epfdInit: Init[EPFD]) extends ComponentDefinition {
           suspected = suspected - p;
           trigger(Restore(p) -> epfd);
         }
-        trigger(Pp2pSend(p, Heartbeat()) -> pp2p);
+        trigger(PL_Send(p, Heartbeat()) -> pp2p);
       }
 
       alive = Set[Address]();
@@ -78,7 +78,7 @@ class EPFD(epfdInit: Init[EPFD]) extends ComponentDefinition {
   }
 
   pp2p uponEvent {
-    case Pp2pDeliver(src, Heartbeat()) => handle {
+    case PL_Deliver(src, Heartbeat()) => handle {
       //      println(s"Heartbeat received from  $src. to $self . Adding it to the list");
       alive = alive + src;
     }

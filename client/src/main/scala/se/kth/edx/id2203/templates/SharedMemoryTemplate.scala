@@ -4,9 +4,11 @@ package se.kth.edx.id2203.templates
 import se.kth.edx.id2203.core.ExercisePrimitives._
 import se.kth.edx.id2203.core.Ports._
 import se.kth.edx.id2203.templates.ReadImposeWriteConsultMajority._
+import se.kth.edx.id2203.validation.validation._
 import se.sics.kompics.network._
 import se.sics.kompics.sl.{Init, _}
 import se.sics.kompics.{ComponentDefinition => _, Port => _, _}
+import scala.language.implicitConversions
 import scala.collection.mutable.Map
 
 
@@ -33,16 +35,17 @@ class ReadImposeWriteConsultMajority(init: Init[ReadImposeWriteConsultMajority])
   
   val nnar = provides[AtomicRegister];
   
-  val pp2p = requires[PerfectP2PLink];
+  val pp2p = requires[PerfectLink];
   val beb = requires[BestEffortBroadcast];
 
   //state and initialization
 
-  val (self, n, selfRank) = init match { 
-    case Init(selfAddr: Address, n: Int) => (self, n, AddressUtils.toRank(self)) 
+  val (self: Address, n : Int, selfRank: Int) = init match { 
+    case Init(selfAddr: Address, n: Int) => (selfAddr, n, AddressUtils.toRank(selfAddr)) 
   };
   
-  var (ts, wr, value: Option[AnyRef]) = (0,0, None);
+  var (ts, wr) = (0,0);
+  var value : Option[AnyRef] = None;
   var acks = 0;
   var readval : Option[AnyRef] = None;
   var writeval : Option[AnyRef] = None;
@@ -53,41 +56,43 @@ class ReadImposeWriteConsultMajority(init: Init[ReadImposeWriteConsultMajority])
   //event handlers
   
   nnar uponEvent {
-    case AR_READ_REQUEST() => handle {
+    case AR_Read_Request() => handle {
       rid = rid + 1;
       acks = 0;
-      readlist = Map.empty;
+      readlist.clear();
       reading = true;
       trigger(BEB_Broadcast(READ(rid)) -> beb)
     };
-    case AR_WRITE_REQUEST(wval) => handle {
+    case AR_Write_Request(wval) => handle {
       rid = rid + 1;
-      writeval = wval;
+      writeval = Some(wval);
       acks = 0;
-      readlist = Map.empty;
-      trigger(READ(rid) -> beb);
+      readlist.clear();
+      trigger(BEB_Broadcast(READ(rid)) -> beb);
     } 
   }
   
   beb uponEvent {
     case BEB_Deliver(src, READ(readID)) => handle {
-      trigger(Pp2pSend(src, VALUE(readID, ts, wr, value)) -> pp2p);
+      trigger(PL_Send(src, VALUE(readID, ts, wr, value)) -> pp2p);
     }
     case BEB_Deliver(src, w: WRITE) => handle {
       if ((w.ts, w.wr) > (ts, wr)) {
-        (ts, wr, value) = (w.ts, w.wr, w.writeVal);
+        ts = w.ts;
+        wr = w.wr;
+        value = w.writeVal;
       } 
-      trigger(Pp2pSend(src, ACK(rid)) -> pp2p);
+      trigger(PL_Send(src, ACK(rid)) -> pp2p);
     }
   }
   
   pp2p uponEvent {
-    case Pp2pDeliver(src, v: VALUE) => handle {
+    case PL_Deliver(src, v: VALUE) => handle {
       if(v.rid == rid){
         readlist += (src -> (v.ts,v.wr,v.value));
         if(readlist.size > n/2){
-          val (maxts, rr, mreadval) = readlist.values.toList.max;
-          readlist = Map.empty;
+          val (maxts, rr, mreadval) = readlist.values.toList.maxBy(x => (x._1,x._2));
+          readlist.clear();
           if(reading){
             trigger(BEB_Broadcast(WRITE(rid, maxts, rr, mreadval)) -> beb);
           }
@@ -97,22 +102,22 @@ class ReadImposeWriteConsultMajority(init: Init[ReadImposeWriteConsultMajority])
         }
       }
     }
-    case Pp2pDeliver(src, v: ACK) => handle {
+    case PL_Deliver(src, v: ACK) => handle {
       acks = acks + 1;
       if(acks > n/2){
         acks = 0;
         if(reading){
           reading = false;
-          trigger(AR_READ_RESPONSE(readval) -> nnar);
+          trigger(AR_Read_Response(readval) -> nnar);
         }
         else {
-          trigger(AR_WRITE_RESPONSE() -> nnar)
+          trigger(AR_Write_Response() -> nnar)
         }
       }
     }
   }
-  
-  
-  
+}
 
+object ARCheck extends App {
+  checkNNAR[ReadImposeWriteConsultMajority]();
 }

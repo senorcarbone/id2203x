@@ -6,12 +6,12 @@ import se.sics.kompics.sl._
 
 object Ports {
 
-  case class Pp2pDeliver(src: Address, payload: KompicsEvent) extends KompicsEvent;
-  case class Pp2pSend(dest: Address, payload: KompicsEvent) extends KompicsEvent;
+  case class PL_Deliver(src: Address, payload: KompicsEvent) extends KompicsEvent;
+  case class PL_Send(dest: Address, payload: KompicsEvent) extends KompicsEvent;
 
-  class PerfectP2PLink extends Port {
-    indication[Pp2pDeliver];
-    request[Pp2pSend];
+  class PerfectLink extends Port {
+    indication[PL_Deliver];
+    request[PL_Send];
   }
 
   case class Suspect(src: Address) extends KompicsEvent;
@@ -47,18 +47,27 @@ object Ports {
   }
   
   
-  case class AR_READ_REQUEST() extends KompicsEvent
-  case class AR_READ_RESPONSE(value: Option[AnyRef]) extends KompicsEvent
-  case class AR_WRITE_REQUEST(value: Option[AnyRef]) extends KompicsEvent
-  case class AR_WRITE_RESPONSE() extends KompicsEvent
+  case class AR_Read_Request() extends KompicsEvent
+  case class AR_Read_Response(value: Option[AnyRef]) extends KompicsEvent
+  case class AR_Write_Request(value: AnyRef) extends KompicsEvent
+  case class AR_Write_Response() extends KompicsEvent
   
   class AtomicRegister extends Port {
-    request[AR_READ_REQUEST]
-    request[AR_WRITE_REQUEST]
-    indication[AR_READ_RESPONSE]
-    indication[AR_WRITE_RESPONSE]
+    request[AR_Read_Request]
+    request[AR_Write_Request]
+    indication[AR_Read_Response]
+    indication[AR_Write_Response]
   }
   
+  case class AC_Decide(value: AnyRef) extends KompicsEvent;
+  case class AC_Abort() extends KompicsEvent;
+  case class AC_Propose(value: AnyRef) extends KompicsEvent;
+  
+  class AbortableConsensus extends Port{
+    request[AC_Propose];
+    indication[AC_Abort];
+    indication[AC_Decide];
+  }
   
 
 }

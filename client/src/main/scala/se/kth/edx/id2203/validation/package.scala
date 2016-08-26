@@ -1,5 +1,6 @@
 package se.kth.edx.id2203.validation
 
+import se.kth.edx.id2203.templates.ARCheck
 import se.kth.edx.id2203.validation.ValidationUtils.{PropertyResult, ValidationGroup, ValidationReport}
 import se.kth.edx.id2203.validation.ValidationUtils.ValidationSimulation._
 import se.kth.edx.id2203.validation.testers._
@@ -47,7 +48,11 @@ object validation {
   def checkCRB[BEBTYPE <: ComponentDefinition : TypeTag, RBTYPE <: ComponentDefinition : TypeTag, CRBTYPE <: ComponentDefinition : TypeTag]() : Unit =
     validateAndPrint("Causal Order Reliable Broadcast", CRBTester[BEBTYPE, RBTYPE, CRBTYPE]())
   
+  def checkNNAR[ARTYPE <: ComponentDefinition : TypeTag]() : Unit = validateAndPrint("NN Atomic Register", RIWCTester[ARTYPE]);
 
+  def checkAbortableConsensus[ACTYPE <: ComponentDefinition: TypeTag]() : Unit = 
+    validateAndPrint("Abortable Consensus", ACTester[ACTYPE])
+  
   def validateAndPrint(componentId: String, props: Iterable[ValidationGroup], maxPoints: Int = 1): Unit = {
     val passed = !props.exists(!_.isValid());
     println(startframeMsg);

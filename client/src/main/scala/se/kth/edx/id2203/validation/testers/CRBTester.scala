@@ -1,7 +1,8 @@
 package se.kth.edx.id2203.validation.testers
 
 import se.kth.edx.id2203.core.ExercisePrimitives.AddressUtils._
-import se.kth.edx.id2203.core.ExercisePrimitives.{AddressUtils, PP2P, PP2PInit}
+import se.kth.edx.id2203.core.ExercisePrimitives.PP2P.PP2PInit
+import se.kth.edx.id2203.core.ExercisePrimitives.{AddressUtils, PP2P}
 import se.kth.edx.id2203.core.Ports._
 import se.kth.edx.id2203.core.SimulationPrimitives.{ProxyInterceptor, ProxyInterceptorInit, ScheduleTriggers}
 import se.kth.edx.id2203.validation.ValidationUtils.{Property, SimValidator, ValidationGroup, ValidationSimulation}
@@ -89,7 +90,7 @@ object CRBTester {
     connect[Network](network -> pp2p);
     connect[Timer](timer -> interceptor);
 
-    connect[PerfectP2PLink](pp2p -> beb);
+    connect[PerfectLink](pp2p -> beb);
     connect[BestEffortBroadcast](beb -> rb);
     connect[ReliableBroadcast](rb -> crb);
     connect[CausalOrderReliableBroadcast](crb -> interceptor);

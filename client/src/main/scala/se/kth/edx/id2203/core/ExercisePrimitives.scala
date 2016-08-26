@@ -44,20 +44,20 @@ object ExercisePrimitives {
   
   class PP2P(pp2pInit: PP2PInit) extends ComponentDefinition {
 
-    val pp2p = provides[PerfectP2PLink];
+    val pp2p = provides[PerfectLink];
     val network = requires[Network];
 
     val self = pp2pInit.selfAddr;
 
     pp2p uponEvent {
-      case Pp2pSend(dest, payload) => handle {
+      case PL_Send(dest, payload) => handle {
         trigger(Pp2pMessage(self, dest, payload) -> network);
       }
     }
 
     network uponEvent {
       case Pp2pMessage(src, dest, payload) => handle {
-        trigger(Pp2pDeliver(src, payload) -> pp2p);
+        trigger(PL_Deliver(src, payload) -> pp2p);
       }
     }
 

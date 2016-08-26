@@ -1,7 +1,8 @@
 package se.kth.edx.id2203.validation.testers
 
-import se.kth.edx.id2203.core.ExercisePrimitives.{AddressUtils, PP2P, PP2PInit}
-import se.kth.edx.id2203.core.Ports.{EventuallyPerfectFailureDetector, PerfectP2PLink, Restore, Suspect}
+import se.kth.edx.id2203.core.ExercisePrimitives.PP2P.PP2PInit
+import se.kth.edx.id2203.core.ExercisePrimitives.{AddressUtils, PP2P}
+import se.kth.edx.id2203.core.Ports.{EventuallyPerfectFailureDetector, PerfectLink, Restore, Suspect}
 import se.kth.edx.id2203.validation.ValidationUtils.{Property, SimValidator, ValidationGroup, ValidationSimulation}
 import se.sics.kompics.network.{Address, Network}
 import se.sics.kompics.simulator.network.identifier.Identifier
@@ -69,7 +70,7 @@ object EPFDTester {
     val interceptor = create(classOf[EPFDInterceptor], Init[EPFDInterceptor](addr));
 
     connect[Network](network -> pp2p);
-    connect[PerfectP2PLink](pp2p -> epfd);
+    connect[PerfectLink](pp2p -> epfd);
     connect[Timer](timer -> epfd);
     connect[EventuallyPerfectFailureDetector](epfd -> interceptor);
 
