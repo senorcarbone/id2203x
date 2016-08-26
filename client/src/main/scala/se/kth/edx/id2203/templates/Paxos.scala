@@ -20,6 +20,7 @@ object Paxos {
   case class Accept(acceptBallot: (Int, Int), proposedValue: AnyRef) extends KompicsEvent;
   case class Accepted(acceptedBallot: (Int, Int)) extends KompicsEvent;
   case class Nack(ballot: (Int, Int)) extends KompicsEvent;
+  case class Decided(decidedValue: AnyRef) extends KompicsEvent;
 
   /**
     * This augments tuples with comparison operators implicitly, which you can use in your code, for convenience. 
@@ -48,6 +49,7 @@ class Paxos(paxosInit: Init[Paxos]) extends ComponentDefinition {
   var proposedValue: Option[AnyRef] = None;
   var promises: Set[((Int, Int), Option[AnyRef])] = Set.empty;
   var numOfAccepts = 0;
+  var decided = false;
 
   //Acceptor State
   var promisedBallot = (0, 0);
@@ -55,21 +57,26 @@ class Paxos(paxosInit: Init[Paxos]) extends ComponentDefinition {
   var acceptedValue: Option[AnyRef] = None;
 
   def propose() = {
-    round = round + 1;
-    numOfAccepts = 0;
-    promises.clear();
-    trigger(BEB_Broadcast(Prepare((round, rank))) -> beb);
+
+    if (!decided) {
+      round = round + 1;
+      numOfAccepts = 0;
+      promises.clear();
+      trigger(BEB_Broadcast(Prepare((round, rank))) -> beb);
+    }
+
   }
 
   consensus uponEvent {
-    case AC_Propose(value) => handle {
+    case C_Propose(value) => handle {
       proposedValue = Some(value);
       propose();
     }
   }
 
+
   beb uponEvent {
-    
+
     case BEB_Deliver(src, prep: Prepare) => handle {
 
       if (promisedBallot < prep.proposalBallot) {
@@ -84,7 +91,7 @@ class Paxos(paxosInit: Init[Paxos]) extends ComponentDefinition {
     case BEB_Deliver(src, acc: Accept) => handle {
 
       if (promisedBallot <= acc.acceptBallot) {
-        
+
         promisedBallot = acc.acceptBallot;
         acceptedBallot = acc.acceptBallot;
         acceptedValue = Some(acc.proposedValue);
@@ -93,11 +100,18 @@ class Paxos(paxosInit: Init[Paxos]) extends ComponentDefinition {
       else {
         trigger(PL_Send(src, Nack(acc.acceptBallot)) -> plink);
       }
+    };
+
+    case Decided(decidedValue) => handle {
+      if (!decided) {
+        trigger(C_Decide(proposedValue) -> consensus);
+        decided = true;
+      }
     }
   }
 
   plink uponEvent {
-    
+
     case PL_Deliver(src, prepAck: Promise) => handle {
 
       if ((round, rank) == prepAck.promiseBallot) {
@@ -109,17 +123,17 @@ class Paxos(paxosInit: Init[Paxos]) extends ComponentDefinition {
         }
       }
     };
-    
+
     case PL_Deliver(src, accAck: Accepted) => handle {
 
       if (promisedBallot == accAck.acceptedBallot) {
         numOfAccepts = numOfAccepts + 1;
-        if(numOfAccepts == (numProcesses + 1) / 2){
-          trigger(AC_Decide(proposedValue) -> consensus);
+        if (numOfAccepts == (numProcesses + 1) / 2) {
+          trigger(Decided(proposedValue) -> beb);
         }
       }
     };
-      
+
     case PL_Deliver(src, nack: Nack) => handle {
 
       if ((round, rank) == nack.ballot) {

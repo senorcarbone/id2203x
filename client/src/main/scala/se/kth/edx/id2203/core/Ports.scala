@@ -59,12 +59,12 @@ object Ports {
     indication[AR_Write_Response]
   }
   
-  case class AC_Decide(value: AnyRef) extends KompicsEvent;
-  case class AC_Propose(value: AnyRef) extends KompicsEvent;
+  case class C_Decide(value: AnyRef) extends KompicsEvent;
+  case class C_Propose(value: AnyRef) extends KompicsEvent;
   
   class Consensus extends Port{
-    request[AC_Propose];
-    indication[AC_Decide];
+    request[C_Propose];
+    indication[C_Decide];
   }
   
 
