@@ -25,7 +25,7 @@ object ReadImposeWriteConsultMajority{
     * This augments tuples with comparison operators implicitly, which you can use in your code. 
     * examples: (1,2) > (1,4) yields 'false' and  (5,4) <= (7,4) yields 'true' 
     */
-  implicit def addComparators[A](x: A)(implicit o: math.Ordering[A]): o.Ops = o.mkOrderingOps(x)
+  implicit def addComparators[A](x: A)(implicit o: math.Ordering[A]): o.Ops = o.mkOrderingOps(x);
   
 }
 

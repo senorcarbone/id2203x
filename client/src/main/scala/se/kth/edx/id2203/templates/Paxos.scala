@@ -10,117 +10,123 @@ import se.sics.kompics.network._
 import se.sics.kompics.sl.{Init, _}
 import se.sics.kompics.{KompicsEvent, ComponentDefinition => _, Port => _}
 
-import scala.collection.mutable.Map
+import scala.collection.mutable.Set;
 
-//Define initialization event
+//Internal messages used by the Paxos protocol
 object Paxos {
 
-  case class Prepare(t: Int, ts: Int) extends KompicsEvent;
-  case class PrepareAck(ts: Int, value: Option[AnyRef], pts: Int, t: Int) extends KompicsEvent;
-  case class Nack(ballotNum: Int, t: Int) extends KompicsEvent;
-  case class Accept(ts: Int, value: Option[AnyRef], t: Int) extends KompicsEvent;
-  case class AcceptAck(ballotNum: Int, t: Int) extends KompicsEvent;
+  case class Prepare(proposalBallot: (Int, Int)) extends KompicsEvent;
+  case class Promise(promiseBallot: (Int, Int), acceptedBallot: (Int, Int), acceptedValue: Option[AnyRef]) extends KompicsEvent;
+  case class Accept(acceptBallot: (Int, Int), proposedValue: AnyRef) extends KompicsEvent;
+  case class Accepted(acceptedBallot: (Int, Int)) extends KompicsEvent;
+  case class Nack(ballot: (Int, Int)) extends KompicsEvent;
+
+  /**
+    * This augments tuples with comparison operators implicitly, which you can use in your code, for convenience. 
+    * examples: (1,2) > (1,4) yields 'false' and  (5,4) <= (7,4) yields 'true' 
+    */
+  implicit def addComparators[A](x: A)(implicit o: math.Ordering[A]): o.Ops = o.mkOrderingOps(x);
 
 }
 
 class Paxos(paxosInit: Init[Paxos]) extends ComponentDefinition {
 
-  val ac = provides[AbortableConsensus];
-  val beb = requires[BestEffortBroadcast];
-  val pp2p = requires[PerfectLink];
+  //Port Subscriptions for Paxos
 
-  val (self, quorumSize) = paxosInit match {
-    case Init(s: Address, qSize: Int) => (s, qSize)
+  val consensus = provides[Consensus];
+  val beb = requires[BestEffortBroadcast];
+  val plink = requires[PerfectLink];
+
+  //Internal State of Paxos
+
+  val (rank, numProcesses) = paxosInit match {
+    case Init(s: Address, qSize: Int) => (toRank(s), qSize)
   }
 
-  var t = 0;
-  var prepts = 0;
-  var ats = 0;
-  var av: Option[AnyRef] = None;
-
-  var ballotNum = 0;
+  //Proposer State
+  var round = 0;
   var proposedValue: Option[AnyRef] = None;
-  var readlist: Map[Address, PrepareAck] = Map.empty;
-  var numAcks = 0;
+  var promises: Set[((Int, Int), Option[AnyRef])] = Set.empty;
+  var numOfAccepts = 0;
 
-  ac uponEvent {
+  //Acceptor State
+  var promisedBallot = (0, 0);
+  var acceptedBallot = (0, 0);
+  var acceptedValue: Option[AnyRef] = None;
+
+  def propose() = {
+    round = round + 1;
+    numOfAccepts = 0;
+    promises.clear();
+    trigger(BEB_Broadcast(Prepare((round, rank))) -> beb);
+  }
+
+  consensus uponEvent {
     case AC_Propose(value) => handle {
-      t = t + 1;
-      ballotNum = t * quorumSize + toRank(self);
       proposedValue = Some(value);
-      readlist.clear();
-      numAcks = 0;
-      trigger(BEB_Broadcast(Prepare(ballotNum, t)) -> beb);
+      propose();
     }
   }
 
   beb uponEvent {
+    
     case BEB_Deliver(src, prep: Prepare) => handle {
-      t = math.max(t, prep.t) + 1;
 
-      if (prepts < prep.ts) {
-        prepts = prep.ts;
-        trigger(PL_Send(src, PrepareAck(ats, av, prep.ts, t)) -> pp2p);
+      if (promisedBallot < prep.proposalBallot) {
+        promisedBallot = prep.proposalBallot;
+        trigger(PL_Send(src, Promise(promisedBallot, acceptedBallot, acceptedValue)) -> plink);
       }
       else {
-        trigger(PL_Send(src, Nack(prep.ts, t)) -> pp2p);
+        trigger(PL_Send(src, Nack(prep.proposalBallot)) -> plink);
       }
     };
 
     case BEB_Deliver(src, acc: Accept) => handle {
-      t = math.max(t, acc.t) + 1;
 
-      if (prepts <= acc.ts) {
-        prepts = acc.ts;
-        ats = acc.ts;
-        av = acc.value;
-        trigger(PL_Send(src, AcceptAck(acc.ts, t)) -> pp2p);
+      if (promisedBallot <= acc.acceptBallot) {
+        
+        promisedBallot = acc.acceptBallot;
+        acceptedBallot = acc.acceptBallot;
+        acceptedValue = Some(acc.proposedValue);
+        trigger(PL_Send(src, Accepted(acc.acceptBallot)) -> plink);
       }
       else {
-        trigger(PL_Send(src, Nack(acc.ts, t)) -> pp2p);
+        trigger(PL_Send(src, Nack(acc.acceptBallot)) -> plink);
       }
     }
   }
 
-  pp2p uponEvent {
-    case PL_Deliver(src, prepAck: PrepareAck) => handle {
-      t = math.max(t, prepAck.t) + 1;
+  plink uponEvent {
+    
+    case PL_Deliver(src, prepAck: Promise) => handle {
 
-      if (ballotNum == prepAck.pts) {
-        readlist += (src -> prepAck)
-        if (readlist.size > quorumSize / 2) {
-          val highest = readlist.maxBy(entry => entry._2.ts)._2;
-          if (highest.ts != 0) {
-            proposedValue = highest.value;
-          }
-          readlist.clear();
-          trigger(BEB_Broadcast(Accept(ballotNum, proposedValue, t)) -> beb);
+      if ((round, rank) == prepAck.promiseBallot) {
+        promises += (prepAck.acceptedBallot -> prepAck.acceptedValue);
+
+        if (promises.size > (numProcesses + 1) / 2) {
+          val acceptedVal = promises.maxBy(entry => entry._1)._2.getOrElse(proposedValue);
+          trigger(BEB_Broadcast(Accept((round, rank), acceptedVal)) -> beb);
         }
       }
     };
+    
+    case PL_Deliver(src, accAck: Accepted) => handle {
 
-    case PL_Deliver(src, accAck: AcceptAck) => handle {
-      t = math.max(t, accAck.t) + 1;
+      if (promisedBallot == accAck.acceptedBallot) {
+        numOfAccepts = numOfAccepts + 1;
+        if(numOfAccepts == (numProcesses + 1) / 2){
+          trigger(AC_Decide(proposedValue) -> consensus);
+        }
+      }
+    };
       
-      if(ballotNum == accAck.ballotNum) {
-        numAcks = numAcks + 1;
-        if(numAcks > quorumSize / 2){
-          ballotNum = 0;
-          trigger(AC_Decide(proposedValue) -> ac);
-        }
-      }
-    };
-
     case PL_Deliver(src, nack: Nack) => handle {
-      t = math.max(t, nack.t) + 1;
-      
-      if(ballotNum == nack.ballotNum){
-        ballotNum = 0;
-        trigger(AC_Abort() -> ac);
+
+      if ((round, rank) == nack.ballot) {
+        propose(); // retry
       }
     }
   }
-
 
 };
 

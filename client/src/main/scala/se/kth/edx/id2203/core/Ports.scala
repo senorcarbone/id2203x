@@ -60,12 +60,10 @@ object Ports {
   }
   
   case class AC_Decide(value: AnyRef) extends KompicsEvent;
-  case class AC_Abort() extends KompicsEvent;
   case class AC_Propose(value: AnyRef) extends KompicsEvent;
   
-  class AbortableConsensus extends Port{
+  class Consensus extends Port{
     request[AC_Propose];
-    indication[AC_Abort];
     indication[AC_Decide];
   }
   
