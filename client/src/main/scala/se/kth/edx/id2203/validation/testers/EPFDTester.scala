@@ -1,7 +1,7 @@
 package se.kth.edx.id2203.validation.testers
 
-import se.kth.edx.id2203.core.ExercisePrimitives.PP2P.PP2PInit
-import se.kth.edx.id2203.core.ExercisePrimitives.{AddressUtils, PP2P}
+import se.kth.edx.id2203.core.ExercisePrimitives.PerfectP2PLink.PerfectLinkInit
+import se.kth.edx.id2203.core.ExercisePrimitives.{AddressUtils, PerfectP2PLink, PerfectP2PLink$}
 import se.kth.edx.id2203.core.Ports.{EventuallyPerfectFailureDetector, PerfectLink, Restore, Suspect}
 import se.kth.edx.id2203.validation.ValidationUtils.{Property, SimValidator, ValidationGroup, ValidationSimulation}
 import se.sics.kompics.network.{Address, Network}
@@ -64,7 +64,7 @@ object EPFDTester {
     
     val network: PositivePort[Network] = requires[Network];
     val timer = requires[Timer];
-    val pp2p = create(classOf[PP2P], PP2PInit(addr))
+    val pp2p = create(classOf[PerfectP2PLink], PerfectLinkInit(addr))
     val epfd = create(javaClass, Init[ComponentDefinition](addr));
 
     val interceptor = create(classOf[EPFDInterceptor], Init[EPFDInterceptor](addr));

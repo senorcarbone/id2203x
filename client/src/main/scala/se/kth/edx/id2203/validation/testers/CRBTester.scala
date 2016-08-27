@@ -1,8 +1,8 @@
 package se.kth.edx.id2203.validation.testers
 
 import se.kth.edx.id2203.core.ExercisePrimitives.AddressUtils._
-import se.kth.edx.id2203.core.ExercisePrimitives.PP2P.PP2PInit
-import se.kth.edx.id2203.core.ExercisePrimitives.{AddressUtils, PP2P}
+import se.kth.edx.id2203.core.ExercisePrimitives.PerfectP2PLink.PerfectLinkInit
+import se.kth.edx.id2203.core.ExercisePrimitives.{AddressUtils, PerfectP2PLink, PerfectP2PLink$}
 import se.kth.edx.id2203.core.Ports._
 import se.kth.edx.id2203.core.SimulationPrimitives.{ProxyInterceptor, ProxyInterceptorInit, ScheduleTriggers}
 import se.kth.edx.id2203.validation.ValidationUtils.{Property, SimValidator, ValidationGroup, ValidationSimulation}
@@ -81,7 +81,7 @@ object CRBTester {
     val timer = requires[Timer];
     val network = requires[Network];
 
-    val pp2p = create(classOf[PP2P], PP2PInit(selfAddr));
+    val pp2p = create(classOf[PerfectP2PLink], PerfectLinkInit(selfAddr));
     val beb = create(bebClass, Init[ComponentDefinition](selfAddr, topology));
     val rb = create(rbClass, Init[ComponentDefinition](selfAddr));
     val crb = create(crbClass, Init[ComponentDefinition](selfAddr, topology));

@@ -17,8 +17,8 @@ object ReadImposeWriteConsultMajority{
   
   //events for internal use
   case class READ(rid: Int) extends KompicsEvent;
-  case class VALUE(rid: Int, ts: Int, wr: Int, value : Option[AnyRef]) extends KompicsEvent;
-  case class WRITE(rid: Int, ts: Int, wr: Int, writeVal: Option[AnyRef]) extends KompicsEvent;
+  case class VALUE(rid: Int, ts: Int, wr: Int, value : Option[Any]) extends KompicsEvent;
+  case class WRITE(rid: Int, ts: Int, wr: Int, writeVal: Option[Any]) extends KompicsEvent;
   case class ACK(rid: Int) extends KompicsEvent;
   
   /**
@@ -35,7 +35,7 @@ class ReadImposeWriteConsultMajority(init: Init[ReadImposeWriteConsultMajority])
   
   val nnar = provides[AtomicRegister];
   
-  val pp2p = requires[PerfectLink];
+  val pLink = requires[PerfectLink];
   val beb = requires[BestEffortBroadcast];
 
   //state and initialization
@@ -45,12 +45,12 @@ class ReadImposeWriteConsultMajority(init: Init[ReadImposeWriteConsultMajority])
   };
   
   var (ts, wr) = (0,0);
-  var value : Option[AnyRef] = None;
+  var value : Option[Any] = None;
   var acks = 0;
-  var readval : Option[AnyRef] = None;
-  var writeval : Option[AnyRef] = None;
+  var readval : Option[Any] = None;
+  var writeval : Option[Any] = None;
   var rid = 0;
-  var readlist : Map[Address, (Int, Int, Option[AnyRef])] =  Map.empty
+  var readlist : Map[Address, (Int, Int, Option[Any])] =  Map.empty
   var reading = false;
   
   //event handlers
@@ -74,7 +74,7 @@ class ReadImposeWriteConsultMajority(init: Init[ReadImposeWriteConsultMajority])
   
   beb uponEvent {
     case BEB_Deliver(src, READ(readID)) => handle {
-      trigger(PL_Send(src, VALUE(readID, ts, wr, value)) -> pp2p);
+      trigger(PL_Send(src, VALUE(readID, ts, wr, value)) -> pLink);
     }
     case BEB_Deliver(src, w: WRITE) => handle {
       if ((w.ts, w.wr) > (ts, wr)) {
@@ -82,11 +82,11 @@ class ReadImposeWriteConsultMajority(init: Init[ReadImposeWriteConsultMajority])
         wr = w.wr;
         value = w.writeVal;
       } 
-      trigger(PL_Send(src, ACK(rid)) -> pp2p);
+      trigger(PL_Send(src, ACK(rid)) -> pLink);
     }
   }
   
-  pp2p uponEvent {
+  pLink uponEvent {
     case PL_Deliver(src, v: VALUE) => handle {
       if(v.rid == rid){
         readlist += (src -> (v.ts,v.wr,v.value));

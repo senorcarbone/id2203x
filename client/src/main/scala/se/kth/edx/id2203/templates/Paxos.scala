@@ -9,18 +9,18 @@ import se.kth.edx.id2203.validation.validation._
 import se.sics.kompics.network._
 import se.sics.kompics.sl.{Init, _}
 import se.sics.kompics.{KompicsEvent, ComponentDefinition => _, Port => _}
-
-import scala.collection.mutable.Set;
+import scala.language.implicitConversions
+import scala.collection.mutable.ListBuffer;
 
 //Internal messages used by the Paxos protocol
 object Paxos {
 
   case class Prepare(proposalBallot: (Int, Int)) extends KompicsEvent;
-  case class Promise(promiseBallot: (Int, Int), acceptedBallot: (Int, Int), acceptedValue: Option[AnyRef]) extends KompicsEvent;
-  case class Accept(acceptBallot: (Int, Int), proposedValue: AnyRef) extends KompicsEvent;
+  case class Promise(promiseBallot: (Int, Int), acceptedBallot: (Int, Int), acceptedValue: Option[Any]) extends KompicsEvent;
+  case class Accept(acceptBallot: (Int, Int), proposedValue: Any) extends KompicsEvent;
   case class Accepted(acceptedBallot: (Int, Int)) extends KompicsEvent;
   case class Nack(ballot: (Int, Int)) extends KompicsEvent;
-  case class Decided(decidedValue: AnyRef) extends KompicsEvent;
+  case class Decided(decidedValue: Any) extends KompicsEvent;
 
   /**
     * This augments tuples with comparison operators implicitly, which you can use in your code, for convenience. 
@@ -46,25 +46,23 @@ class Paxos(paxosInit: Init[Paxos]) extends ComponentDefinition {
 
   //Proposer State
   var round = 0;
-  var proposedValue: Option[AnyRef] = None;
-  var promises: Set[((Int, Int), Option[AnyRef])] = Set.empty;
+  var proposedValue: Option[Any] = None;
+  var promises: ListBuffer[((Int, Int), Option[Any])] = ListBuffer.empty;
   var numOfAccepts = 0;
   var decided = false;
 
   //Acceptor State
   var promisedBallot = (0, 0);
   var acceptedBallot = (0, 0);
-  var acceptedValue: Option[AnyRef] = None;
+  var acceptedValue: Option[Any] = None;
 
   def propose() = {
-
     if (!decided) {
       round = round + 1;
       numOfAccepts = 0;
       promises.clear();
       trigger(BEB_Broadcast(Prepare((round, rank))) -> beb);
     }
-
   }
 
   consensus uponEvent {
@@ -78,7 +76,6 @@ class Paxos(paxosInit: Init[Paxos]) extends ComponentDefinition {
   beb uponEvent {
 
     case BEB_Deliver(src, prep: Prepare) => handle {
-
       if (promisedBallot < prep.proposalBallot) {
         promisedBallot = prep.proposalBallot;
         trigger(PL_Send(src, Promise(promisedBallot, acceptedBallot, acceptedValue)) -> plink);
@@ -102,9 +99,9 @@ class Paxos(paxosInit: Init[Paxos]) extends ComponentDefinition {
       }
     };
 
-    case Decided(decidedValue) => handle {
+    case BEB_Deliver(src, dec : Decided) => handle {
       if (!decided) {
-        trigger(C_Decide(proposedValue) -> consensus);
+        trigger(C_Decide(dec.decidedValue) -> consensus);
         decided = true;
       }
     }
@@ -113,23 +110,21 @@ class Paxos(paxosInit: Init[Paxos]) extends ComponentDefinition {
   plink uponEvent {
 
     case PL_Deliver(src, prepAck: Promise) => handle {
-
       if ((round, rank) == prepAck.promiseBallot) {
         promises += (prepAck.acceptedBallot -> prepAck.acceptedValue);
-
+        println(s"${System.currentTimeMillis()} :: PROPOSER $rank now has ${promises.size} promises");
         if (promises.size > (numProcesses + 1) / 2) {
-          val acceptedVal = promises.maxBy(entry => entry._1)._2.getOrElse(proposedValue);
-          trigger(BEB_Broadcast(Accept((round, rank), acceptedVal)) -> beb);
+          proposedValue = Some(promises.maxBy(entry => entry._1)._2.getOrElse(proposedValue.get));
+          trigger(BEB_Broadcast(Accept((round, rank), proposedValue.get)) -> beb);
         }
       }
     };
 
     case PL_Deliver(src, accAck: Accepted) => handle {
-
       if (promisedBallot == accAck.acceptedBallot) {
         numOfAccepts = numOfAccepts + 1;
         if (numOfAccepts == (numProcesses + 1) / 2) {
-          trigger(Decided(proposedValue) -> beb);
+          trigger(BEB_Broadcast(Decided(proposedValue)) -> beb);
         }
       }
     };
@@ -145,5 +140,5 @@ class Paxos(paxosInit: Init[Paxos]) extends ComponentDefinition {
 };
 
 object PaxosTemplate extends App {
-  checkAbortableConsensus[Paxos]();
+  checkSingleValueConsensus[Paxos]();
 }

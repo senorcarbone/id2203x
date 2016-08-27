@@ -48,8 +48,8 @@ object Ports {
   
   
   case class AR_Read_Request() extends KompicsEvent
-  case class AR_Read_Response(value: Option[AnyRef]) extends KompicsEvent
-  case class AR_Write_Request(value: AnyRef) extends KompicsEvent
+  case class AR_Read_Response(value: Option[Any]) extends KompicsEvent
+  case class AR_Write_Request(value: Any) extends KompicsEvent
   case class AR_Write_Response() extends KompicsEvent
   
   class AtomicRegister extends Port {
@@ -59,8 +59,8 @@ object Ports {
     indication[AR_Write_Response]
   }
   
-  case class C_Decide(value: AnyRef) extends KompicsEvent;
-  case class C_Propose(value: AnyRef) extends KompicsEvent;
+  case class C_Decide(value: Any) extends KompicsEvent;
+  case class C_Propose(value: Any) extends KompicsEvent;
   
   class Consensus extends Port{
     request[C_Propose];

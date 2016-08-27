@@ -48,10 +48,10 @@ object validation {
   def checkCRB[BEBTYPE <: ComponentDefinition : TypeTag, RBTYPE <: ComponentDefinition : TypeTag, CRBTYPE <: ComponentDefinition : TypeTag]() : Unit =
     validateAndPrint("Causal Order Reliable Broadcast", CRBTester[BEBTYPE, RBTYPE, CRBTYPE]())
   
-  def checkNNAR[ARTYPE <: ComponentDefinition : TypeTag]() : Unit = validateAndPrint("NN Atomic Register", RIWCTester[ARTYPE]);
+  def checkNNAR[ARTYPE <: ComponentDefinition : TypeTag]() : Unit = validateAndPrint("NN Atomic Register", ABDTester[ARTYPE]);
 
-  def checkAbortableConsensus[ACTYPE <: ComponentDefinition: TypeTag]() : Unit = 
-    validateAndPrint("Abortable Consensus", ACTester[ACTYPE])
+  def checkSingleValueConsensus[ACTYPE <: ComponentDefinition: TypeTag]() : Unit = 
+    validateAndPrint("Single Value Consensus", PaxosTester[ACTYPE])
   
   def validateAndPrint(componentId: String, props: Iterable[ValidationGroup], maxPoints: Int = 1): Unit = {
     val passed = !props.exists(!_.isValid());

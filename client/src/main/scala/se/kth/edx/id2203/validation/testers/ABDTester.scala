@@ -1,8 +1,8 @@
 package se.kth.edx.id2203.validation.testers
 
 import se.kth.edx.id2203.core.ExercisePrimitives.AddressUtils._
-import se.kth.edx.id2203.core.ExercisePrimitives.PP2P
-import se.kth.edx.id2203.core.ExercisePrimitives.PP2P._
+import se.kth.edx.id2203.core.ExercisePrimitives.{PerfectP2PLink, PerfectP2PLink$}
+import se.kth.edx.id2203.core.ExercisePrimitives.PerfectP2PLink._
 import se.kth.edx.id2203.core.Ports._
 import se.kth.edx.id2203.core.SimulationPrimitives.{ProxyInterceptor, ProxyInterceptorInit, ScheduleTriggers}
 import se.kth.edx.id2203.validation.ValidationUtils.{Property, SimValidator, ValidationGroup, ValidationSimulation}
@@ -24,7 +24,7 @@ import scala.collection.mutable
 import scala.reflect.runtime.universe._
 import scala.concurrent.duration._
 
-object RIWCTester {
+object ABDTester {
 
   val LOG_STATE: String = "simulation.delivered"
 
@@ -88,7 +88,7 @@ object RIWCTester {
     val timer = requires[Timer];
     val network = requires[Network];
 
-    val pp2p = create(classOf[PP2P], PP2PInit(selfAddr));
+    val pp2p = create(classOf[PerfectP2PLink], PerfectLinkInit(selfAddr));
     val beb = create(classOf[ProvidedBroadcast], Init[ProvidedBroadcast](selfAddr, topology))
     val nnar = create(nnarClass, Init[ComponentDefinition](selfAddr, topology.size));
     val interceptor = create(classOf[NNARInterceptor], Init[NNARInterceptor](selfAddr, proxyInit));

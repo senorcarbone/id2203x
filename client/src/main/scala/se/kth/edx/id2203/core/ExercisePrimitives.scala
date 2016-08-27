@@ -2,7 +2,7 @@ package se.kth.edx.id2203.core
 
 import java.net.{InetAddress, InetSocketAddress}
 
-import se.kth.edx.id2203.core.ExercisePrimitives.PP2P._
+import se.kth.edx.id2203.core.ExercisePrimitives.PerfectP2PLink._
 import se.kth.edx.id2203.core.Ports._
 import se.sics.kompics.{Init, KompicsEvent}
 import se.sics.kompics.network.{Address, Network, Transport}
@@ -37,27 +37,27 @@ object ExercisePrimitives {
     }
   }
 
-  object PP2P{  
-    case class PP2PInit(selfAddr: Address) extends Init[PP2P];
-    case class Pp2pMessage(src: Address, dest: Address, payload: KompicsEvent) extends DirectMessage(src, dest, Transport.TCP); 
+  object PerfectP2PLink{  
+    case class PerfectLinkInit(selfAddr: Address) extends Init[PerfectP2PLink];
+    case class PerfectLinkMessage(src: Address, dest: Address, payload: KompicsEvent) extends DirectMessage(src, dest, Transport.TCP); 
   }
   
-  class PP2P(pp2pInit: PP2PInit) extends ComponentDefinition {
+  class PerfectP2PLink(pp2pInit: PerfectLinkInit) extends ComponentDefinition {
 
-    val pp2p = provides[PerfectLink];
+    val pLink = provides[PerfectLink];
     val network = requires[Network];
 
     val self = pp2pInit.selfAddr;
 
-    pp2p uponEvent {
+    pLink uponEvent {
       case PL_Send(dest, payload) => handle {
-        trigger(Pp2pMessage(self, dest, payload) -> network);
+        trigger(PerfectLinkMessage(self, dest, payload) -> network);
       }
     }
 
     network uponEvent {
-      case Pp2pMessage(src, dest, payload) => handle {
-        trigger(PL_Deliver(src, payload) -> pp2p);
+      case PerfectLinkMessage(src, dest, payload) => handle {
+        trigger(PL_Deliver(src, payload) -> pLink);
       }
     }
 

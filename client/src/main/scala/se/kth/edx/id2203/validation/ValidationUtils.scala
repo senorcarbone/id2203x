@@ -14,6 +14,7 @@ import se.sics.kompics.timer.{ScheduleTimeout, Timeout, Timer}
 import se.sics.kompics.{Init, Start, ComponentDefinition => _, Port => _}
 import spray.json.DefaultJsonProtocol._
 
+import scala.annotation.tailrec
 import scala.collection.mutable
 
 
@@ -180,6 +181,14 @@ object ValidationUtils {
       }
     }
 
+  }
+
+  @tailrec
+  def unfoldValue(value : Any): Any = {
+    value match {
+      case Some(x) => unfoldValue(x);
+      case x => x;
+    }
   }
 
 }
