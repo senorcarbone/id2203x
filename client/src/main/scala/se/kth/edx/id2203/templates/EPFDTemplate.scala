@@ -50,7 +50,6 @@ class EPFD(epfdInit: Init[EPFD]) extends ComponentDefinition {
   //EPFD event handlers
   ctrl uponEvent {
     case _: Start => handle {
-      println("EPFD Started");
       startTimer(period);
     }
   }
@@ -79,7 +78,6 @@ class EPFD(epfdInit: Init[EPFD]) extends ComponentDefinition {
 
   pLink uponEvent {
     case PL_Deliver(src, Heartbeat()) => handle {
-      //      println(s"Heartbeat received from  $src. to $self . Adding it to the list");
       alive = alive + src;
     }
   }

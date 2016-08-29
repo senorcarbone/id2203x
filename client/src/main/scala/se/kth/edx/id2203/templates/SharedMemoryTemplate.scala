@@ -18,11 +18,8 @@ object ReadImposeWriteConsultMajority {
 
   //events for internal use
   case class READ(rid: Int) extends KompicsEvent;
-
   case class VALUE(rid: Int, ts: Int, wr: Int, value: Option[Any]) extends KompicsEvent;
-
   case class WRITE(rid: Int, ts: Int, wr: Int, writeVal: Option[Any]) extends KompicsEvent;
-
   case class ACK(rid: Int) extends KompicsEvent;
 
   /**
@@ -65,7 +62,6 @@ class ReadImposeWriteConsultMajority(init: Init[ReadImposeWriteConsultMajority])
       acks = 0;
       readlist.clear();
       reading = true;
-      println(s"${System.currentTimeMillis()} :: Reader $selfRank bebs ${BEB_Broadcast(READ(rid))}")
       trigger(BEB_Broadcast(READ(rid)) -> beb)
     };
     case AR_Write_Request(wval) => handle {
@@ -73,7 +69,6 @@ class ReadImposeWriteConsultMajority(init: Init[ReadImposeWriteConsultMajority])
       writeval = Some(wval);
       acks = 0;
       readlist.clear();
-      println(s"${System.currentTimeMillis()} :: Writer $selfRank bebs ${BEB_Broadcast(READ(rid))}")
       trigger(BEB_Broadcast(READ(rid)) -> beb);
     }
   }
@@ -84,7 +79,6 @@ class ReadImposeWriteConsultMajority(init: Init[ReadImposeWriteConsultMajority])
     }
     case BEB_Deliver(src, w: WRITE) => handle {
       if ((w.ts, w.wr) > (ts, wr)) {
-        println(s"${System.currentTimeMillis()} :: Writer $selfRank WRITES ${w.writeVal}")
         ts = w.ts;
         wr = w.wr;
         value = w.writeVal;
@@ -102,11 +96,9 @@ class ReadImposeWriteConsultMajority(init: Init[ReadImposeWriteConsultMajority])
           readval = mreadval;
           readlist.clear();
           if (reading) {
-            println(s"${System.currentTimeMillis()} :: Reader $selfRank GOT MAJORITY and bebs ${BEB_Broadcast(WRITE(rid, maxts, rr, readval))}")
             trigger(BEB_Broadcast(WRITE(rid, maxts, rr, readval)) -> beb);
           }
           else {
-            println(s"${System.currentTimeMillis()} :: Writer $selfRank GOT MAJORITY and bebs ${BEB_Broadcast(WRITE(rid, maxts + 1, selfRank, writeval))}")
             trigger(BEB_Broadcast(WRITE(rid, maxts + 1, selfRank, writeval)) -> beb);
           }
         }
@@ -117,12 +109,10 @@ class ReadImposeWriteConsultMajority(init: Init[ReadImposeWriteConsultMajority])
       if (acks > n / 2) {
         acks = 0;
         if (reading) {
-          println(s"${System.currentTimeMillis()} :: Reader $selfRank GOT WRITE MAJORITY for $readval!!")
           reading = false;
           trigger(AR_Read_Response(readval) -> nnar);
         }
         else {
-          println(s"${System.currentTimeMillis()} :: Writer $selfRank GOT WRITE MAJORITY for $writeval!!")
           trigger(AR_Write_Response() -> nnar)
         }
       }
