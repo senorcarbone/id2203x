@@ -59,7 +59,6 @@ object ABDTester {
     ctrl uponEvent {
       case _: Start => handle {
         initialize(pInit);
-//        pInit.triggers.filter(_._2.isInstanceOf[AR_Write_Request]).foreach(scheduleWriteReqLogging(_));
         pInit.triggers.foreach(scheduleWriteReqLogging(_));
       }
     }
@@ -118,6 +117,71 @@ object ABDTester {
     connect[AtomicRegister](nnar -> interceptor);
   }
 
+  def extractOps(events: ListBuffer[(Address, Long, KompicsEvent)]): ListBuffer[AR_Op] = {
+    events.filter(_._3.isInstanceOf[AR_Read_Request]).zip(events.filter(_._3.isInstanceOf[AR_Read_Response])).map(matches => {
+      val req = matches._1.asInstanceOf[(Address, Long, AR_Read_Request)];
+      val resp = matches._2.asInstanceOf[(Address, Long, AR_Read_Response)];
+      AR_Op(false, resp._3.value, req._2, resp._2, Set.empty[AR_Op]);
+    }) ++ events.filter(_._3.isInstanceOf[AR_Write_Request]).zip(events.filter(_._3.isInstanceOf[AR_Write_Response])).map(matches => {
+      val req = matches._1.asInstanceOf[(Address, Long, AR_Write_Request)];
+      val resp = matches._2.asInstanceOf[(Address, Long, AR_Write_Response)];
+      AR_Op(true, Some(req._3.value), req._2, resp._2, Set.empty[AR_Op]);
+    })
+  };
+
+  def validateLinerizability(triggeredEvents: ListBuffer[(Address, Long, KompicsEvent)]): Boolean = {
+
+    val allOps : ListBuffer[AR_Op] = extractOps(triggeredEvents)
+
+    val processedReads = allOps.map(evt => {
+      if(!evt.write && evt.value != None){
+        val writeMatch = allOps.filter(writeop => writeop.write && writeop.value == evt.value).get(0);
+        AR_Op(false, evt.value, evt.start, evt.stop, evt.seqDependencies+writeMatch)
+      }
+      else evt;
+    });
+
+    val consDependencies = processedReads.map(evt =>{
+      val succ = processedReads.filter(evt2 => evt.start > evt2.stop);
+      succ.foldLeft(evt)((myevt, next) => AR_Op(evt.write, evt.value, evt.start, evt.stop, evt.seqDependencies+next));
+    })
+
+    liner_check(consDependencies, Set.empty[List[AR_Op]]);
+  }
+
+  def liner_execution(execution : List[AR_Op]): Boolean = {
+    execution.foldLeft[Option[Any]](None)((b, nextOp) => {
+      if (nextOp.write) nextOp.value
+      else {
+        if (nextOp.value != b) {
+          return false;
+        }
+        b
+      }
+    });
+    return true;
+  }
+
+  @tailrec
+  final def liner_check(remainingOps : ListBuffer[AR_Op], executions : collection.immutable.Set[List[AR_Op]]) : Boolean = {
+
+    //leaf: check atomicity violations in executions
+    if (remainingOps.isEmpty) {
+      return executions.exists(liner_execution)
+    }
+
+    //continue traversal
+    val toTraverse = remainingOps.filter(_.seqDependencies.isEmpty);
+    val filteredRemaining = remainingOps.filter(x => !toTraverse.contains(x)).map(y => {
+      AR_Op(y.write, y.value, y.start, y.stop, y.seqDependencies -- y.seqDependencies.intersect(toTraverse.toSet[AR_Op]))
+    });
+
+    
+    val updatedExecutions : Set[List[AR_Op]] = if(!executions.isEmpty) toTraverse.permutations.flatMap(x => { executions.map(ex => ex ++ x)}).toSet
+    else toTraverse.permutations.map(_.toList).toSet;
+    liner_check(filteredRemaining, updatedExecutions);
+  }
+
   /**
     * (N,N) Atomic Register
     *
@@ -153,70 +217,6 @@ object ABDTester {
     
     val startNNAR = Op((self: Integer) => StartNode(toAddress(self), Init[NNARParent](toAddress(self), topology,
       asJavaClass[ARTYPE](typeOf[ARTYPE]), ScheduleTriggers(toAddress(self))((writeTriggers ++ readTriggers).toArray:_*))));
-
-    def extractOps(events: ListBuffer[(Address, Long, KompicsEvent)]): ListBuffer[AR_Op] = {
-      events.filter(_._3.isInstanceOf[AR_Read_Request]).zip(events.filter(_._3.isInstanceOf[AR_Read_Response])).map(matches => {
-        val req = matches._1.asInstanceOf[(Address, Long, AR_Read_Request)];
-        val resp = matches._2.asInstanceOf[(Address, Long, AR_Read_Response)];
-        AR_Op(false, resp._3.value, req._2, resp._2, Set.empty[AR_Op]);
-      }) ++ events.filter(_._3.isInstanceOf[AR_Write_Request]).zip(events.filter(_._3.isInstanceOf[AR_Write_Response])).map(matches => {
-          val req = matches._1.asInstanceOf[(Address, Long, AR_Write_Request)];
-          val resp = matches._2.asInstanceOf[(Address, Long, AR_Write_Response)];
-          AR_Op(true, Some(req._3.value), req._2, resp._2, Set.empty[AR_Op]);
-        })
-    };
-
-    def validateLinerizability(triggeredEvents: ListBuffer[(Address, Long, KompicsEvent)]): Boolean = {
-      
-      val allOps : ListBuffer[AR_Op] = extractOps(triggeredEvents)
-        
-      val processedReads = allOps.map(evt => {
-        if(!evt.write && evt.value != None){
-          val writeMatch = allOps.filter(writeop => writeop.write && writeop.value == evt.value).get(0);
-          AR_Op(false, evt.value, evt.start, evt.stop, evt.seqDependencies+writeMatch)
-        }
-        else evt;
-      });
-      
-      val consDependencies = processedReads.map(evt =>{
-        val succ = processedReads.filter(evt2 => evt.start > evt2.stop);
-        succ.foldLeft(evt)((myevt, next) => AR_Op(evt.write, evt.value, evt.start, evt.stop, evt.seqDependencies+next));
-      })
-      
-      liner_check(consDependencies, Set.empty[List[AR_Op]]);
-    }
-
-    def liner_execution(execution : List[AR_Op]): Boolean = {
-      execution.foldLeft[Option[Any]](None)((b, nextOp) => {
-        if (nextOp.write) nextOp.value
-        else {
-          if (nextOp.value != b) {
-            return false;
-          }
-          b
-        }
-      });
-      return true;
-    }
-    
-    @tailrec
-    final def liner_check(remainingOps : ListBuffer[AR_Op], executions : collection.immutable.Set[List[AR_Op]]) : Boolean = {
-
-      //leaf: check atomicity violations in executions
-      if (remainingOps.isEmpty) {
-        return executions.exists(liner_execution)
-      }
-      
-      //continue traversal
-      val toTraverse = remainingOps.filter(_.seqDependencies.isEmpty).toSet[AR_Op];
-      val filteredRemaining = remainingOps.filter(x => !toTraverse.contains(x)).map(y => {
-        AR_Op(y.write, y.value, y.start, y.stop, y.seqDependencies -- y.seqDependencies.intersect(toTraverse))
-      });
-        
-      val additionalExecutions = if(!executions.isEmpty) toTraverse.flatMap(x => { executions.map(ex => ex :+ x)})
-      else toTraverse.map(List(_));
-      liner_check(filteredRemaining, executions ++ additionalExecutions);
-    }
 
     def terminationCheck(triggeredEvents: ListBuffer[(Address, Long, KompicsEvent)]): Boolean = {
       topology.forall(addr => triggeredEvents.exists(entry => entry._3 match {

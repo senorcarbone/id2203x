@@ -1,8 +1,6 @@
 package se.kth.edx.id2203.validation
 
-import se.kth.edx.id2203.templates.ARCheck
 import se.kth.edx.id2203.validation.ValidationUtils.{PropertyResult, ValidationGroup, ValidationReport}
-import se.kth.edx.id2203.validation.ValidationUtils.ValidationSimulation._
 import se.kth.edx.id2203.validation.testers._
 import se.sics.kompics.sl._
 import se.sics.kompics.{ComponentDefinition => _, Port => _}
@@ -60,7 +58,8 @@ object validation {
     println(finalMsg)
     if (passed) {
       println(successMsg(componentId));
-      println(GradingToken(Encryptor.encrypt(gradeComponent(componentId, props, maxPoints).toJson.toString)).toJson.toString);
+      //FIXME
+//      println(GradingToken(Encryptor.encrypt(gradeComponent(componentId, props, maxPoints).toJson.toString)).toJson.toString);
     }
     else {
       println(errorMsg(componentId));
