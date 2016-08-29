@@ -25,6 +25,7 @@ import collection.immutable.Set
 import collection.mutable.ListBuffer
 import scala.concurrent.duration._
 import scala.reflect.runtime.universe._
+import scala.util.Random
 
 object PaxosTester {
 
@@ -58,7 +59,6 @@ object PaxosTester {
 
     consensus uponEvent {
       case x@C_Decide(y) => handle{
-        println(s"Interceptor : Process ${toRank(self)} DECIDES : ${x.value}")
         val gv = cfg.getValue[GlobalView]("simulation.globalview");
         val stateLogs = gv.getValue(LOG_STATE, classOf[HashMap[Address, ListBuffer[C_Decide]]]);
         val myList = stateLogs.get(self).getOrElse(ListBuffer.empty[C_Decide]);
@@ -115,8 +115,10 @@ object PaxosTester {
     import Distributions._
 
     assert(numNodes > numProposers);
-    
-    val msgs = Seq.fill(numProposers)(C_Propose(SimulationScenario.getRandom.nextInt)).toArray[C_Propose]
+
+    //this is a true random (not using the simulator seed) to ensure uniqueness across validations
+    val instantRandom = new Random();                               
+    val msgs = Seq.fill(numProposers)(C_Propose(instantRandom.nextInt)).toArray[C_Propose]
 
     val topology = (1 to numNodes).map(toAddress(_)).toSet;
 
@@ -126,8 +128,8 @@ object PaxosTester {
     val setConstantLatencyNetwork = () => Op((maxDelay: java.lang.Long) => ChangeNetwork(NetworkModels.withConstantDelay(maxDelay)));
     val setUniformLatencyNetwork = () => Op((minDelay: java.lang.Long, maxDelay: java.lang.Long) => ChangeNetwork(NetworkModels.withUniformRandomDelay(minDelay, maxDelay)));
 
+    val triggers = (1 to numProposers).map(x => (toAddress(x), Int.box(x * skew).toLong, msgs(x-1))).toArray
     val startPaxos = Op((self: Integer) => {
-      val triggers = (1 to numProposers).map(x => (toAddress(x), Int.box(x * skew).toLong, msgs(x-1))).toArray
       StartNode(toAddress(self), Init[ConsensusParent](toAddress(self), topology,
         asJavaClass[CTYPE](typeOf[CTYPE]), ScheduleTriggers(toAddress(self))(triggers:_*)))});
 

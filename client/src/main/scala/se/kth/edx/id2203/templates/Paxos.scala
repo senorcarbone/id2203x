@@ -112,7 +112,6 @@ class Paxos(paxosInit: Init[Paxos]) extends ComponentDefinition {
     case PL_Deliver(src, prepAck: Promise) => handle {
       if ((round, rank) == prepAck.promiseBallot) {
         promises += (prepAck.acceptedBallot -> prepAck.acceptedValue);
-        println(s"${System.currentTimeMillis()} :: PROPOSER $rank now has ${promises.size} promises");
         if (promises.size > (numProcesses + 1) / 2) {
           proposedValue = Some(promises.maxBy(entry => entry._1)._2.getOrElse(proposedValue.get));
           trigger(BEB_Broadcast(Accept((round, rank), proposedValue.get)) -> beb);

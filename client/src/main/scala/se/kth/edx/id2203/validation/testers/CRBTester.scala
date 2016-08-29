@@ -22,6 +22,7 @@ import collection.mutable.ListBuffer
 import scala.collection.mutable
 import scala.reflect.runtime.universe._
 import scala.concurrent.duration._
+import scala.util.Random
 
 object CRBTester {
 
@@ -112,11 +113,14 @@ object CRBTester {
   case class CRBValidation[BEBTYPE <: ComponentDefinition : TypeTag, RBTYPE <: ComponentDefinition : TypeTag, CRBTYPE <: ComponentDefinition : TypeTag](numNodes: Int) {
 
     import Distributions._
-
+    
+    //random val for unique messages per experiment
+    val rand = new Random();
+    
     val msgs = Array(
-      new BroadcastedMessage(toAddress(2), 3),
-      new BroadcastedMessage(toAddress(1), 1),
-      new BroadcastedMessage(toAddress(1), 2)
+      new BroadcastedMessage(toAddress(2), rand.nextInt()),
+      new BroadcastedMessage(toAddress(1), rand.nextInt()),
+      new BroadcastedMessage(toAddress(1), rand.nextInt())
     );
     
     val topology = (1 to numNodes).map(toAddress(_)).toSet;
@@ -170,7 +174,7 @@ object CRBTester {
     val prop4 =
       Property("Causal Delivery")
         .addValidator(SimValidator(_.getValue(LOG_STATE, classOf[mutable.HashMap[Address, ListBuffer[CRB_Deliver]]])
-          .forall(_._2.map(_.payload.asInstanceOf[BroadcastedMessage].seq).toList == List(3,1,2))
+          .forall(_._2.map(_.payload.asInstanceOf[BroadcastedMessage].seq).toList == msgs.map(_.seq).toList)
           , 109999,
           "All messages delivered respect causality order",
           "Some delivered messages violate causality guarantees. Make sure happened-before relations are maintained")).build();

@@ -22,6 +22,7 @@ import collection.mutable.ListBuffer
 import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.reflect.runtime.universe._
+import scala.util.Random
 
 object RBTester {
 
@@ -118,10 +119,13 @@ object RBTester {
     val setNetwork = () => Op((maxDelay: java.lang.Long) =>
       ChangeNetwork(NetworkModels.withUniformRandomDelay(0, maxDelay, SimulationScenario.getRandom)));
 
+    //random val for unique messages per experiment
+    val simmsg = new Random().nextInt();
+    
     val startRB = Op((self: Integer) => StartNode(toAddress(self), Init[RBParent](toAddress(self), topology, 
       asJavaClass[BEBTYPE](typeOf[BEBTYPE]), asJavaClass[RBTYPE](typeOf[RBTYPE]),
       ScheduleTriggers(
-        (9000l, RB_Broadcast(new BroadcastedMessage(toAddress(self), 1)))
+        (9000l, RB_Broadcast(new BroadcastedMessage(toAddress(self), simmsg)))
       ))));
 
     val killOP = Op { (self: Integer) => KillNode(toAddress(self)) }
@@ -131,7 +135,7 @@ object RBTester {
         .addValidator(SimValidator(_.getValue(LOG_STATE, classOf[HashMap[Address, ListBuffer[RB_Deliver]]])
           .forall(_._2.forall {
             case x@RB_Deliver(src, y: BroadcastedMessage) => {
-              y.src == src && y.seq == 1;
+              y.src == src && y.seq == simmsg;
             }
             case _ => {
               false;

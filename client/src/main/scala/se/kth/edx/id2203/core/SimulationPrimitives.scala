@@ -3,7 +3,7 @@ package se.kth.edx.id2203.core
 import se.sics.kompics.network.Address
 import se.sics.kompics.sl.{ComponentDefinition, PositivePort}
 import se.sics.kompics.timer.{ScheduleTimeout, Timeout, Timer}
-import se.sics.kompics.{KompicsEvent, PortType, Start}
+import se.sics.kompics.{KompicsEvent, PortType}
 import se.sics.kompics.sl._
 
 object SimulationPrimitives {
