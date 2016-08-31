@@ -32,6 +32,9 @@ class Grader extends Actor with ActorLogging {
     implicit val ec = new ActorDispatcher(this)
     implicit val timeout = Timeout(60.seconds);
 
+    val config = context.system.settings.config;
+    val pollingInterval = config.getDuration("kthx.grader.polling-interval", SECONDS);
+    
     val xqmanager = context.actorOf(Props[XQueueManager], "xqmanager");
     val xfilemanager = context.actorOf(Props[XFileManager], "xfilemanager");
     val checker = context.actorOf(FromConfig.props(SubmissionChecker.withManager(xfilemanager, self)), "checkerRouter");
@@ -40,7 +43,7 @@ class Grader extends Actor with ActorLogging {
     private var outstandingChecks = 0l;
     private var shutdownInProgress = false;
 
-    val scheduledCheck = context.system.scheduler.schedule(10.seconds, 60.seconds, self, QueueStatus);
+    val scheduledCheck = context.system.scheduler.schedule(10.seconds, pollingInterval.seconds, self, QueueStatus);
 
     def receive = ActorDispatcher.receive orElse {
         case req: XQueueRequest => {

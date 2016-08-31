@@ -10,9 +10,11 @@ import se.kth.edx.id2203.validation.ValidationUtils.ValidationSimulation.reportF
 
 class SubmissionTest extends TestKit(ActorSystem("testSystem")) with FlatSpecLike with Matchers {
     val hwFileS = Thread.currentThread().getContextClassLoader.getResourceAsStream("testhw.json");
-    val hwFile = scala.io.Source.fromInputStream(hwFileS).mkString
-    val actorRef = TestActorRef[SubmissionChecker](Props(classOf[SubmissionChecker], null, null))
-    val sc = actorRef.underlyingActor
+    val hwFile = scala.io.Source.fromInputStream(hwFileS).mkString;
+    val hwFileFailS = Thread.currentThread().getContextClassLoader.getResourceAsStream("testhwfail.json");
+    val hwFileFail = scala.io.Source.fromInputStream(hwFileFailS).mkString;
+    val actorRef = TestActorRef[SubmissionChecker](Props(classOf[SubmissionChecker], null, null));
+    val sc = actorRef.underlyingActor;
 
     "SubmissionChecker" should "find tokens" in {
 
@@ -38,5 +40,12 @@ class SubmissionTest extends TestKit(ActorSystem("testSystem")) with FlatSpecLik
         val result = sc.grade(reports, Set("Eventually Perfect Failure Detector"))
         result should not be (null);
         result._1 should be (1);
+        println(result._2)
+    }
+    
+    it should "deal with failed submissions" in {
+        hwFileFail should not be empty;
+        val tokens = sc.extractTokens(hwFileFail);
+        tokens shouldBe empty;
     }
 }

@@ -66,7 +66,7 @@ object ValidationUtils {
             sb.append("For component ");
             sb.append(id);
             sb.append(": ");
-            val props = properties.map { x => x.id ++ (if (x.valid) { "passed" } else { "failed" }) }.mkString(", ");
+            val props = properties.map { x => x.id ++ ": " ++ (if (x.valid) { "passed" } else { "failed" }) }.mkString(", ");
             sb.append(props);
             sb.toString()
         }

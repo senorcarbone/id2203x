@@ -10,4 +10,7 @@ package object grader {
                 response.withEntity(response.entity.flatMap(_.copy(contentType = contentType)))
             }
     }
+    def nl2br(s: String) = {
+        s.replaceAll("\n", "<br />")
+    }
 }

@@ -13,6 +13,10 @@ object Main extends App {
 
     val nostopsupervisors = system.actorOf(Props[NoStopSupervisor], "nostop");
     val myListener = system.actorOf(FromConfig.props(Props[Router]), "routerRouter");
+    
+    val bindIf = conf.getString("kthx.grader.web-interface");
+    val bindPort = conf.getInt("kthx.grader.web-port");
 
-    IO(Http) ! Http.Bind(myListener, interface = "localhost", port = 8080)
+
+    IO(Http) ! Http.Bind(myListener, interface = bindIf, port = bindPort)
 }

@@ -24,7 +24,7 @@ import se.kth.edx.id2203.validation.ValidationUtils.ValidationSimulation.reportF
 object SubmissionChecker {
     case class CheckSubmission(entity: JsValue)
     case class FailedPull(msg: String)
-    case class PartialGrade(title: String, msg: String, points: Int)
+    case class PartialGrade(title: String, msg: String, reports: Seq[ValidationReport])
     case class TokenPar(title: String, token: Array[Byte])
     def withManager(xfilemanager: ActorRef, grader: ActorRef): Props = Props(classOf[SubmissionChecker], xfilemanager, grader)
 }
@@ -50,36 +50,66 @@ class SubmissionChecker(val xfilemanager: ActorRef, val grader: ActorRef) extend
             }
         }
         case xqr: XQueueRequest => {
-            val partialGradesIF = xqr.xqueue_files map {
-                case (fileName, fileUri) =>
-                    val f = (xfilemanager ? Fetch(fileUri)).mapTo[Either[HttpEntity, String]];
-                    f map {
-                        case Left(entity) => try {
-                            val tokens = extractTokens(entity.asString)
-                            // FIXME do other stuff
-                            PartialGrade(fileName, "It worked...testing", 0)
-                        } catch {
+            try {
+                val components = xqr.xqueue_body.grader_payload.parseJson.convertTo[Array[String]].toSet;
+                log.debug(s"To be graded: $components");
+                val partialGradesIFFiles = xqr.xqueue_files map {
+                    case (fileName, fileUri) =>
+                        val f = (xfilemanager ? Fetch(fileUri)).mapTo[Either[HttpEntity, String]];
+                        f map {
+                            case Left(entity) => try {
+                                val tokens = extractTokens(entity.asString);
+                                PartialGrade(fileName, "none", tokens.map(decrypt))
+                            } catch {
+                                case e: Throwable =>
+                                    log.debug(s"Couldn't deserialise notebook file: $entity");
+                                    log.warning(s"Deserialisation Error was: $e");
+                                    PartialGrade(fileName, "Data Format Invalid.", Seq.empty)
+                            }
+                            case Right(msg) => PartialGrade(fileName, "Unable to fetch result file.", Seq.empty)
+                        } recover {
                             case e: Throwable =>
-                                log.debug(s"Couldn't deserialise notebook file: $entity");
-                                log.warning(s"Deserialisation Error was: $e");
-                                PartialGrade(fileName, "Data Format Invalid.", 0)
+                                log.warning(s"An error occurred during processing of $fileName: $e");
+                                PartialGrade(fileName, "An error occurred during processing.", Seq.empty)
                         }
-                        case Right(msg) => PartialGrade(fileName, "Unable to fetch result file.", 0)
+                };
+                val partialGradesIF = partialGradesIFFiles.toSeq :+ Future {
+                    try {
+                        val tokens = extractTokens(xqr.xqueue_body.student_response);
+                        PartialGrade("student response", "none", tokens.map(decrypt))
+                    } catch {
+                        case e: Throwable =>
+                            log.debug(s"Couldn't deserialise notebook file: ${xqr.xqueue_body.student_response}");
+                            log.warning(s"Deserialisation Error was: $e");
+                            PartialGrade("student response", "Data Format Invalid.", Seq.empty)
                     }
-            };
+                };
 
-            val partialGradesFI = Future.sequence(partialGradesIF);
-            partialGradesFI map { partialGrades =>
-                val totalGrade = partialGrades.foldLeft((0, "Messages:")) { (acc, pg) =>
-                    (acc._1 + pg.points, acc._2 ++ "/n" ++ pg.title ++ ": " ++ pg.msg)
-                }
-                //TODO check success condition
-                XQueueResponse(xqr.xqueue_header, XQueueResponseBody(true, totalGrade._1, totalGrade._2))
-            } recover {
-                case e =>
-                    log.info(s"Error on grading: $e");
-                    XQueueResponse(xqr.xqueue_header, XQueueResponseBody(false, 0, "There was an error grading the assigment. Please resubmit, if you believe this is an error on our side."))
-            } pipeTo grader
+                val partialGradesFI = Future.sequence(partialGradesIF);
+                partialGradesFI map { partialGrades =>
+                    val reports = partialGrades.foldLeft(Seq.empty[ValidationReport]) { (acc, pg) =>
+                        acc ++ pg.reports
+                    };
+                    val result = if (!reports.isEmpty) {
+                        grade(reports, components);
+                    } else {
+                        (0, "Messages: No grading tokens submitted. Please make sure that the tests pass locally before submitting the notebook.")
+                    }
+                    val messages = partialGrades.foldLeft("Other Messages:") { (acc, pg) =>
+                        acc ++ "\n" ++ pg.title ++ ": " ++ pg.msg
+                    }
+                    val msg = nl2br(result._2 ++ "\n" ++ messages);
+                    XQueueResponse(xqr.xqueue_header, XQueueResponseBody(result._1 > 0, result._1, msg))
+                } recover {
+                    case e =>
+                        log.info(s"Error on grading: $e");
+                        XQueueResponse(xqr.xqueue_header, XQueueResponseBody(false, 0, "There was an error grading the assigment. Please resubmit, if you believe this is an error on our side."))
+                } pipeTo grader
+            } catch {
+                case e: Throwable =>
+                    log.info(s"Error on grading component extraction: $e");
+                    grader ! XQueueResponse(xqr.xqueue_header, XQueueResponseBody(false, 0, "There was an error grading the assigment. Error was: Nothing to grade"))
+            }
 
         }
         case FailedPull(msg: String) => {
@@ -138,8 +168,12 @@ class SubmissionChecker(val xfilemanager: ActorRef, val grader: ActorRef) extend
     private[grader] def grade(reports: Seq[ValidationReport], components: Set[String]): Tuple2[Int, String] = {
         val rMap = reports.map { r => (r.id -> r) }.toMap; // remove duplicate entries
         val fMap = rMap.filterKeys { id => components.contains(id) } // remove entries from other tasks
-        fMap.values.foldLeft((0, "Messages:")) { (acc, report) =>
-            (acc._1 + report.points, acc._2 ++ "\n" ++ report.toMessage)
+        if (fMap.isEmpty) {
+            (0, "Messages: It looks like you submitted the wrong task.")
+        } else {
+            fMap.values.foldLeft((0, "Messages:")) { (acc, report) =>
+                (acc._1 + report.points, acc._2 ++ "\n" ++ report.toMessage)
+            }
         }
     }
 }
