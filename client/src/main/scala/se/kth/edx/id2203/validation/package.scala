@@ -2,7 +2,7 @@ package se.kth.edx.id2203
 
 import java.io.{File, FileOutputStream, PrintStream}
 
-import se.kth.edx.id2203.validation.ValidationUtils.{PropertyResult, ValidationGroup, ValidationReport}
+import se.kth.edx.id2203.validation.ValidationUtils.{PropertyResult, ValidationGroup, ValidationReport, ValidationResult}
 import se.kth.edx.id2203.validation.ValidationUtils.ValidationSimulation._
 import se.kth.edx.id2203.validation.testers._
 import se.sics.kompics.sl._
@@ -16,12 +16,7 @@ import scala.reflect.runtime.universe._
 package object validation {
   
   val outputLinkMsg = "\nYour submission has been locally simulated and validated.\n" +
-    "\n<a href=\"file:////tmp/output.txt\">Click Here</a> to view the output of the simulation \n "
-  
-  val startframeMsg = " * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * \n" +
-                 " -----------------------VALIDATION RESULTS----------------------------- \n";
-  
-  val endframeMsg =  " * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * \n"
+    "\n<a href=\"\\static\\log.txt\" target=\"_blank\">Click Here</a> to view the output of the simulation."
     
   val successMsg = (id: String) => 
     s"Congratulations! Your implementation of the '$id' satisfies all properties! " +
@@ -32,7 +27,28 @@ package object validation {
       s"\nPlease make sure your implementation covers all guarantees and try again. "
   
   val finalMsg = "Final Comments\n" +
-                 "--------------";  
+                 "**************";
+  
+  val hackyHTMLTableStart =
+    "<style type=\"text/css\">.tg  {border-collapse:collapse;border-spacing:0;border-color:#aabcfe;}.tg " +
+      "td{font-family:Arial, sans-serif;font-size:14px;padding:10px 5px;" +
+      "border-style:solid;border-width:1px;overflow:hidden;word-break:normal;border-color:#aabcfe;" +
+      "color:#669;background-color:#e8edff;}.tg " +
+      "th{font-family:Arial, sans-serif;font-size:14px;font-weight:normal;padding:10px 5px;" +
+      "border-style:solid;border-width:1px;overflow:hidden;word-break:normal;border-color:#aabcfe;" +
+      "color:#039;background-color:#b9c9fe;}.tg .tg-mb3i{background-color:#D2E4FC;text-align:right;vertical-align:top}.tg " +
+      ".tg-lqy6{text-align:right;vertical-align:top}.tg " +
+      ".tg-vlnx{background-color:#3071a9;color:#ffffff;text-align:center;vertical-align:top}.tg " +
+      ".tg-6k2t{background-color:#D2E4FC;vertical-align:top}.tg tg-6k2l{background-color:#ffb3b3;vertical-align:top}.tg .tg-yw4l{vertical-align:top}</style><table class=\"tg\">  " +
+      "<tr>    <th class=\"tg-vlnx\" colspan=\"3\">Correction Results</th>  </tr>";
+  
+  val hackyHTMLTableLine = (css: String, passmsg: String, propId: String, validations : Array[ValidationResult]) =>
+      "<tr>    <td class=\""+css+"\">"+passmsg+"</td> <td class=\""+css+"\">"+propId+"</td> " +
+        "<td class=\""+css+"\">"+validations.foldLeft("")((str, next) => str + next.toString()+"<br>")+"</td>  </tr>  ";
+  val hackHTMLTableEnd = "</table>";
+
+  val styleByResult = (res: Boolean) => if(res) "tg-6k2t" else "tg-6k2l";
+  val msgByResult = (res: Boolean) => if(res) "PASSED" else "FAILED";
   
   var defaultOutput : PrintStream = System.out;
 
@@ -41,10 +57,14 @@ package object validation {
   implicit val gradingFormat = jsonFormat1(GradingToken)
 
   def outToFile(): Unit = {
+    val staticOutDir: File = new File("/tmp/output")
+    if(!staticOutDir.exists()){
+      staticOutDir.mkdir
+    }
     defaultOutput = System.out; // save current endpoint
     System.out.flush();
     Console.out.flush();
-    val outFile: File = new File("/tmp/output")
+    val outFile: File = new File("/tmp/output/log.txt")
     if (outFile.exists()) {
       outFile.delete();
     }
@@ -95,8 +115,9 @@ package object validation {
     val passed = !props.exists(!_.isValid());
     outReset();
     println(outputLinkMsg)
-    println(startframeMsg);
-    props.foreach(println(_));
+    println(hackyHTMLTableStart);
+    props.foreach(p => println(hackyHTMLTableLine(styleByResult(p.isValid()), msgByResult(p.isValid()), p.id, p.validators.map(_.getResult()).toArray)))
+    println(hackHTMLTableEnd);
     println(finalMsg)
     if (passed) {
       println(successMsg(componentId));
@@ -105,7 +126,6 @@ package object validation {
     else {
       println(errorMsg(componentId));
     }
-    println(endframeMsg);
   }
   
   
