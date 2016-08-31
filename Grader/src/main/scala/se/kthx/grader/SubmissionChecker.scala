@@ -15,11 +15,17 @@ import akka.util.Timeout
 import spray.json._
 import spray.httpx.SprayJsonSupport._
 import com.larskroll.common.ActorDispatcher
+import se.kth.edx.id2203.validation.GradingToken
+import se.kth.edx.id2203.validation.gradingFormat
+import se.kth.edx.id2203.validation.Encryptor
+import se.kth.edx.id2203.validation.ValidationUtils.ValidationReport
+import se.kth.edx.id2203.validation.ValidationUtils.ValidationSimulation.reportFormat
 
 object SubmissionChecker {
     case class CheckSubmission(entity: JsValue)
     case class FailedPull(msg: String)
     case class PartialGrade(title: String, msg: String, points: Int)
+    case class TokenPar(title: String, token: Array[Byte])
     def withManager(xfilemanager: ActorRef, grader: ActorRef): Props = Props(classOf[SubmissionChecker], xfilemanager, grader)
 }
 
@@ -49,25 +55,9 @@ class SubmissionChecker(val xfilemanager: ActorRef, val grader: ActorRef) extend
                     val f = (xfilemanager ? Fetch(fileUri)).mapTo[Either[HttpEntity, String]];
                     f map {
                         case Left(entity) => try {
-                            val jso = entity.asString.parseJson.asJsObject
-                            jso.fields("paragraphs") match {
-                                case JsArray(els) => {
-                                    val pars = els map {
-                                        case paragraph: JsObject => {
-                                            val title = paragraph.fields.getOrElse("title", JsString("Untitled")).convertTo[String];
-                                            val result = paragraph.fields("result").asJsObject;
-                                            val msg = result.fields("msg").convertTo[String];
-                                            val realMsg = decrypt(msg);
-                                            PartialGrade(title, "ok", grade(realMsg))
-                                        }
-                                        case _ => PartialGrade("?", "Invalid format!", 0)
-                                    }
-                                    pars.foldLeft(PartialGrade(fileName, "Messages:", 0)) { (acc, pg) =>
-                                        PartialGrade(acc.title, acc.msg ++ "\n" ++ pg.msg, acc.points + pg.points)
-                                    }
-                                }
-                                case _ => PartialGrade(fileName, "No Content", 0)
-                            }
+                            val tokens = extractTokens(entity.asString)
+                            // FIXME do other stuff
+                            PartialGrade(fileName, "It worked...testing", 0)
                         } catch {
                             case e: Throwable =>
                                 log.debug(s"Couldn't deserialise notebook file: $entity");
@@ -77,6 +67,7 @@ class SubmissionChecker(val xfilemanager: ActorRef, val grader: ActorRef) extend
                         case Right(msg) => PartialGrade(fileName, "Unable to fetch result file.", 0)
                     }
             };
+
             val partialGradesFI = Future.sequence(partialGradesIF);
             partialGradesFI map { partialGrades =>
                 val totalGrade = partialGrades.foldLeft((0, "Messages:")) { (acc, pg) =>
@@ -97,11 +88,58 @@ class SubmissionChecker(val xfilemanager: ActorRef, val grader: ActorRef) extend
         }
     }
 
-    private def decrypt(data: String): String = {
-        return data;
+    private[grader] def extractTokens(data: String): Seq[TokenPar] = {
+        val jso = data.parseJson.asJsObject
+        jso.fields("paragraphs") match {
+            case JsArray(els) => {
+                val pars = els flatMap {
+                    case paragraph: JsObject => {
+                        val title = paragraph.fields.getOrElse("title", JsString("Untitled")).convertTo[String];
+                        val result = paragraph.fields("result").asJsObject;
+                        val msg = result.fields("msg").convertTo[String];
+                        findToken(msg) match {
+                            case Some(tokenS) => {
+                                log.debug(s"Found grading token in message: $tokenS");
+                                val gtoken = tokenS.parseJson.convertTo[GradingToken];
+                                Some(TokenPar(title, gtoken.gradingToken))
+                            }
+                            case None => log.debug(s"Couldn't find grading token in $msg"); None
+                        }
+                    }
+                    case x => log.debug(s"Invalid paragraph format in: $x"); None
+                }
+                pars.toSeq
+            }
+            case x => log.debug(s"No paragraphs found in: $x"); Seq.empty
+        }
     }
 
-    private def grade(results: String): Int = {
-        return 1;
+    private[grader] def findToken(resultMsg: String): Option[String] = {
+        val start = resultMsg.indexOf("{\"gradingToken\"");
+        if (start >= 0) {
+            val tail = resultMsg.substring(start);
+            val end = tail.indexOf("]}");
+            if (end >= 0) {
+                Some(tail.substring(0, end + 2))
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    private[grader] def decrypt(token: TokenPar): ValidationReport = {
+        val reportS = Encryptor.decryptText(token.token);
+        val report = reportS.parseJson.convertTo[ValidationReport];
+        report
+    }
+
+    private[grader] def grade(reports: Seq[ValidationReport], components: Set[String]): Tuple2[Int, String] = {
+        val rMap = reports.map { r => (r.id -> r) }.toMap; // remove duplicate entries
+        val fMap = rMap.filterKeys { id => components.contains(id) } // remove entries from other tasks
+        fMap.values.foldLeft((0, "Messages:")) { (acc, report) =>
+            (acc._1 + report.points, acc._2 ++ "\n" ++ report.toMessage)
+        }
     }
 }

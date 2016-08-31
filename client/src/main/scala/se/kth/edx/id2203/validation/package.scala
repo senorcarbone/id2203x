@@ -1,4 +1,4 @@
-package se.kth.edx.id2203.validation
+package se.kth.edx.id2203
 
 import se.kth.edx.id2203.validation.ValidationUtils.{PropertyResult, ValidationGroup, ValidationReport}
 import se.kth.edx.id2203.validation.testers._
@@ -10,7 +10,7 @@ import spray.json._
 import scala.reflect.runtime.universe._
 
 
-object validation {
+package object validation {
   
   val startframeMsg = " * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * \n" +
                  " -----------------------VALIDATION RESULTS----------------------------- \n";
