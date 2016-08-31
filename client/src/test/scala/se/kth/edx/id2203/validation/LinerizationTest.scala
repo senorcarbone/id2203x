@@ -1,8 +1,6 @@
 package se.kth.edx.id2203.validation.testers
 
-import org.junit.runner.RunWith
 import org.scalatest._
-import org.scalatest.junit.JUnitRunner
 import se.kth.edx.id2203.core.ExercisePrimitives.AddressUtils._
 import se.kth.edx.id2203.core.Ports.{AR_Read_Request, AR_Read_Response, AR_Write_Request, AR_Write_Response}
 
