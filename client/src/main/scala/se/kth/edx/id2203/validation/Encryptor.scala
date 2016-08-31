@@ -25,8 +25,8 @@ object Encryptor extends StrictLogging {
 
     //private lazy val defkey = readPubKey("rsa/edx-key-pub.der");
     private val config = ConfigFactory.load();
-    private val pubKey = readPubKey(config.getString("kthx.client.crypto.publicKey"));
-    private val privateKey = readPrivateKey(config.getString("kthx.client.crypto.privateKey"));
+    private lazy val pubKey = readPubKey(config.getString("kthx.client.crypto.publicKey"));
+    private lazy val privateKey = readPrivateKey(config.getString("kthx.client.crypto.privateKey"));
 
     def formatBytes(bytes: Array[Byte]): String = bytes.map("%02X" format _).mkString
 

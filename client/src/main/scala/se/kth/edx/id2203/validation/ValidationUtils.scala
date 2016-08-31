@@ -27,10 +27,8 @@ object ValidationUtils {
   }
 
   case class SimValidator(predicate: GlobalView => Boolean, triggerTime: Long, successMsg: String = "",
-                          failureMsg: String = "") {
-    var passed = false;
-    var triggered = false;
-
+                          failureMsg: String = "", var passed : Boolean = false, var triggered : Boolean = false) {
+    
     def validate(currentView: GlobalView): ValidationResult = {
       if (!triggered) {
         passed = predicate(currentView);
@@ -152,7 +150,8 @@ object ValidationUtils {
 
     def finalizeExecution() = {
       val oos = new ObjectOutputStream(new FileOutputStream("/tmp/observer"));
-      oos.writeObject(properties);
+      oos.writeObject(properties.map(vg => ValidationGroup(vg.id, vg.validators.map(v => 
+        SimValidator(null, v.triggerTime, v.successMsg, v.failureMsg, v.passed, v.triggered)))));
       oos.flush();
       oos.close
       getGlobalView().terminate();

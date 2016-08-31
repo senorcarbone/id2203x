@@ -31,7 +31,7 @@ object ABDTester {
   def apply[ARTYPE <: ComponentDefinition : TypeTag](): collection.Iterable[ValidationGroup] = {
     val seed = 123;
     SimulationScenario.setSeed(seed);
-    ValidationSimulation.runAndValidate(NNRegisterValidation[ARTYPE](20, 10, 5l, 5, 10, 5).scenario);
+    ValidationSimulation.runAndValidate(NNRegisterValidation[ARTYPE](10, 4, 50l, 100, 50, 90).scenario);
   }
 
   class InterceptorPayload(id: Int) extends KompicsEvent with Serializable;
@@ -75,14 +75,14 @@ object ABDTester {
       case x: AR_Read_Response => handle{
         val gv = cfg.getValue[GlobalView]("simulation.globalview");
         val globalState = gv.getValue(GLOBAL_STATE, classOf[ListBuffer[(Address, Long, KompicsEvent)]]);
-        println(s"INTERCEPTOR :: Reader ${toRank(self)} FINISHED $x")
+        println(s"${System.currentTimeMillis()} -- INTERCEPTOR :: Reader ${toRank(self)} FINISHED $x")
         globalState.add((self, System.currentTimeMillis(), x));
         gv.setValue(GLOBAL_STATE, globalState);
       }
       case x: AR_Write_Response => handle{
         val gv = cfg.getValue[GlobalView]("simulation.globalview");
         val globalState = gv.getValue(GLOBAL_STATE, classOf[ListBuffer[(Address, Long, KompicsEvent)]]);
-        println(s"INTERCEPTOR :: Writer ${toRank(self)} FINISHED $x")
+        println(s"${System.currentTimeMillis()} -- INTERCEPTOR :: Writer ${toRank(self)} FINISHED $x")
         globalState.add((self, System.currentTimeMillis(), x));
         gv.setValue(GLOBAL_STATE, globalState);
       }
@@ -145,7 +145,7 @@ object ABDTester {
       val succ = processedReads.filter(evt2 => evt.start > evt2.stop);
       succ.foldLeft(evt)((myevt, next) => AR_Op(evt.write, evt.value, evt.start, evt.stop, evt.seqDependencies+next));
     })
-
+    println(consDependencies)
     liner_check(consDependencies, Set.empty[List[AR_Op]]);
   }
 
