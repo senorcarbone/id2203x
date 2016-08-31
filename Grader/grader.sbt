@@ -29,6 +29,7 @@ libraryDependencies += "com.chuusai" %% "shapeless" % "2.1.0"
 libraryDependencies += "org.scalactic" %% "scalactic" % "2.2.6"
 libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.6" % "test"
 libraryDependencies += "com.lihaoyi" %% "scalatags" % "0.6.0"
+libraryDependencies += "se.kth.edx" %% "kompicsteaching" % "0.9.2-SNAPSHOT"
 
 
 

@@ -17,7 +17,7 @@ import spray.httpx.SprayJsonSupport._
 import com.larskroll.common.ActorDispatcher
 
 object SubmissionChecker {
-    case class CheckSubmission(entity: HttpEntity)
+    case class CheckSubmission(entity: JsValue)
     case class FailedPull(msg: String)
     case class PartialGrade(title: String, msg: String, points: Int)
     def withManager(xfilemanager: ActorRef, grader: ActorRef): Props = Props(classOf[SubmissionChecker], xfilemanager, grader)
@@ -33,10 +33,14 @@ class SubmissionChecker(val xfilemanager: ActorRef, val grader: ActorRef) extend
 
     def receive = ActorDispatcher.receive orElse {
         case CheckSubmission(entity) => {
-            entity.as[XQueueRequest] match {
-                case Right(xqr) => self ! xqr
-                case Left(error) =>
+            try {
+                val xqr = entity.convertTo[XQueueRequest];
+                log.debug(s"Decoded request: $xqr")
+                self ! xqr
+            } catch {
+                case error: Throwable =>
                     log.warning(s"Couldn't deserialise request:\n\t$entity \n Error was:\n\t$error");
+                    sender ! XQueueManager.GradingCompleted // not really but this doesn't seem recoverable
             }
         }
         case xqr: XQueueRequest => {
@@ -79,11 +83,11 @@ class SubmissionChecker(val xfilemanager: ActorRef, val grader: ActorRef) extend
                     (acc._1 + pg.points, acc._2 ++ "/n" ++ pg.title ++ ": " ++ pg.msg)
                 }
                 //TODO check success condition
-                XQueueResponse(true, totalGrade._1, totalGrade._2)
+                XQueueResponse(xqr.xqueue_header, XQueueResponseBody(true, totalGrade._1, totalGrade._2))
             } recover {
                 case e =>
                     log.info(s"Error on grading: $e");
-                    XQueueResponse(false, 0, "There was an error grading the assigment. Please resubmit, if you believe this is an error on our side.")
+                    XQueueResponse(xqr.xqueue_header, XQueueResponseBody(false, 0, "There was an error grading the assigment. Please resubmit, if you believe this is an error on our side."))
             } pipeTo grader
 
         }

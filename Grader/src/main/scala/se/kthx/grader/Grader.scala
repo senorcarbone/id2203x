@@ -45,7 +45,7 @@ class Grader extends Actor with ActorLogging {
     def receive = ActorDispatcher.receive orElse {
         case req: XQueueRequest => {
             if (req.xqueue_body != null) {
-                sender ! Some(XQueueResponse(false, 0, "Didn't work bro!"))
+                sender ! Some(XQueueResponse(req.xqueue_header, XQueueResponseBody(false, 0, "That didn't work out...")))
             } else {
                 sender ! None
             }
