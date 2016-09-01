@@ -25,7 +25,8 @@ libraryDependencies += "se.sics.kompics.basic" % "kompics-port-network" % kompic
 libraryDependencies += "org.bouncycastle" % "bcpg-jdk15on" % "1.55"
 libraryDependencies += "org.bouncycastle" % "bcprov-jdk15on" % "1.55"
 libraryDependencies += "com.jsuereth" %% "scala-arm" % "1.4"
-
+libraryDependencies += "com.lihaoyi" %% "scalatags" % "0.6.0"
+libraryDependencies += "io.spray" %%  "spray-json" % "1.3.2"
 //libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value
 libraryDependencies += "org.scalactic" %% "scalactic" % "3.0.0" % "test"
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.0" % "test"
