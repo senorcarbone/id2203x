@@ -125,8 +125,8 @@ class SubmissionChecker(val xfilemanager: ActorRef, val grader: ActorRef) extend
                 val pars = els flatMap {
                     case paragraph: JsObject => {
                         val title = paragraph.fields.getOrElse("title", JsString("Untitled")).convertTo[String];
-                        val result = paragraph.fields("result").asJsObject;
-                        val msg = result.fields("msg").convertTo[String];
+                        val result = paragraph.fields.getOrElse("result", JsObject.empty).asJsObject;
+                        val msg = result.fields.getOrElse("msg", JsString("")).convertTo[String];
                         findToken(msg) match {
                             case Some(tokenS) => {
                                 log.debug(s"Found grading token in message: $tokenS");

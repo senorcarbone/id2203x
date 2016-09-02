@@ -24,11 +24,6 @@
       },
       "jobName": "paragraph_1466688496442_-355634050",
       "id": "20160623-152816_923395673",
-      "result": {
-        "code": "SUCCESS",
-        "type": "TEXT",
-        "msg": "import se.kth.edx.id2203.core.Ports._\nimport se.kth.edx.id2203.validation.validation._\nimport se.sics.kompics.network._\nimport se.sics.kompics.sl.{Init, _}\nimport se.sics.kompics.timer.{ScheduleTimeout, Timeout, Timer}\nimport se.sics.kompics.{KompicsEvent, Start, ComponentDefinition=>_, Port=>_}\n"
-      },
       "dateCreated": "2016-06-23T15:28:16+0200",
       "dateStarted": "2016-08-30T19:23:30+0200",
       "dateFinished": "2016-08-30T19:23:33+0200",
