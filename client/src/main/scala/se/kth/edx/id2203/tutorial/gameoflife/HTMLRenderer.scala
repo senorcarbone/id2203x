@@ -39,14 +39,20 @@ object HTMLRenderer {
 
     def render(jsStr: String) {
         val pg = page(jsStr);
-        println(pg);
+        //println(pg);
         // for testing only
-        //val fullPage = html(lang := "en")(header,
-        //    body(raw(pg))).render;
-        //val htmlFile = File.createTempFile("goltest", ".html");
-        //val writer = new FileWriter(htmlFile);
-        //writer.write(fullPage);
-        //writer.close();
+        val fullPage = html(lang := "en")(header,
+            body(raw(pg))).render;
+        val htmlFile = new File("/tmp/output/goltest.html");
+        if (htmlFile.exists()) {
+            htmlFile.delete();
+        }
+        htmlFile.createNewFile();
+        val writer = new FileWriter(htmlFile);
+        writer.write(fullPage);
+        writer.close();
         //Desktop.getDesktop().browse(htmlFile.toURI());
+        val linky = p(b("To see the generated output click "), a(href:="static/goltest.html", "here", target := "_blank"));
+        println(linky.render)
     }
 }
