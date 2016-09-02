@@ -33,13 +33,17 @@ class CellC(init: CellCInit) extends Cell {
             view += ((x -> y) -> otherState);
             //println(s"Cell($xPos, $yPos) got state $otherState from Cell($x, $y) leading to: $view");
             if (view.size == 8) { // everyone around me 3x3-1
-                var liveC = 0;
-                for (s <- view.values) {
-                    s match {
-                        case Alive => liveC += 1;
-                        case _ => // ignore
-                    }
-                }
+                //                var liveC = 0;
+                //                for (s <- view.values) {
+                //                    s match {
+                //                        case Alive => liveC += 1;
+                //                        case _ => // ignore
+                //                    }
+                //                }
+                val liveC = view.values.count {
+                    case Alive => true
+                    case _     => false
+                };
                 state match {
                     case Alive => {
                         if (liveC < 2) { // Rule 1
