@@ -31,7 +31,7 @@ libraryDependencies += "io.spray" %%  "spray-json" % "1.3.2"
 libraryDependencies += "org.scalactic" %% "scalactic" % "3.0.0" % "test"
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.0" % "test"
 libraryDependencies += "io.spray" %%  "spray-json" % "1.3.2"
-libraryDependencies += "ch.qos.logback" % "logback-classic" % "0.9.28" % "test"
+libraryDependencies += "ch.qos.logback" % "logback-classic" % "0.9.28" 
 libraryDependencies += "org.slf4j" % "slf4j-api" % "1.7.5"
 
 

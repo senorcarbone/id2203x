@@ -36,7 +36,7 @@ object EPFDTester {
   def apply[C <: ComponentDefinition : TypeTag]() : collection.Iterable[ValidationGroup] = {
     val seed = 123;
     JSimulationScenario.setSeed(seed);
-    ValidationSimulation.runAndValidate(EPFDValidation(asJavaClass[C](typeOf[C]),15, 3, 10l, 5, 20).scenario);
+    ValidationSimulation.runAndValidate(EPFDValidation(asJavaClass[C](typeOf[C]),15, 3, 100l, 50, 200).scenario);
   }
 }
 
@@ -99,7 +99,7 @@ case class EPFDValidation(compClass : Class[_ <: ComponentDefinition], numNodes:
 
   //dynamic random for failed node selection
   val deathNote = getUniqueKillTargets(discNodes, numNodes);
-  //    println(s"Kill List ${deathNote.foreach(println(_))}")
+  
   def getUniqueKillTargets(size: Int, max : Int) : Array[Integer] = {
     val extRand = new Random();
     assert(size < max);
@@ -136,13 +136,13 @@ case class EPFDValidation(compClass : Class[_ <: ComponentDefinition], numNodes:
 
   val prop1: ValidationGroup = Property("Strong Completeness")
     .addValidator(SimValidator(gv =>
-      validateProperty(gv, true, deathNote.map(toAddress(_)).toList), 90000l,
+      validateProperty(gv, true, deathNote.map(toAddress(_)).toList), 100000l,
       "Every process that crashes is eventually suspected permanently by every correct process",
       "Not every process that crashes is eventually suspected permanently by every correct process")).build()
 
   val prop2: ValidationGroup = Property("Eventual Strong Accuracy")
     .addValidator(SimValidator(gv =>
-      validateProperty(gv, false, topology.filter(p => !deathNote.map(toAddress(_)).contains(p))), 90000l,
+      validateProperty(gv, false, topology.filter(p => !deathNote.map(toAddress(_)).contains(p))), 100000l,
       "Eventually, no correct process is suspected by any correct process",
       "There exist correct processes that were permanently suspected by correct processes")).build();
 
@@ -153,7 +153,7 @@ case class EPFDValidation(compClass : Class[_ <: ComponentDefinition], numNodes:
     ChangeNetwork(NetworkModels.withUniformRandomDelay(0, maxDelay, SimulationScenario.getRandom)));
 
   val delayOp = Op((_: Unit) => ChangeNetwork(withDisconnectedModel(
-    new SocketIdExtractor(), NetworkModels.withUniformRandomDelay(0, maxLinkDelay, SimulationScenario.getRandom),
+    new SocketIdExtractor(), NetworkModels.withUniformRandomDelay(5, maxLinkDelay, SimulationScenario.getRandom),
     new java.util.HashSet[Identifier](topology.slice(0, discNodes).map(x => new SocketIdExtractor().extract(x)).toSet[Identifier]))));
 
   val startEPFDs = Op((self: Integer) => StartNode(AddressUtils.toAddress(self),
@@ -167,7 +167,7 @@ case class EPFDValidation(compClass : Class[_ <: ComponentDefinition], numNodes:
       raise(1, setupOp).arrival(Distributions.constant(0)), raise(1, setUniformDelay(), constant(maxLinkDelay)).arrival(constant(0)),
       raise(numNodes, startEPFDs, 1.toN).arrival(constant(0))) andThen 10000.millis afterTermination
       raise(1, delayOp).arrival(constant(0)) andThen 500.millis afterTermination
-      //        raise(1, setUniformDelay(), constant(0)).arrival(constant(0)) andThen 10000.millis afterTermination
+//      raise(1, setUniformDelay(), constant(0)).arrival(constant(0)) andThen 10000.millis afterTermination
       raise(discNodes, killOP, new GenIntSequentialDistribution(deathNote)).arrival(constant(0)) andThen 100000l.millis afterTermination Terminate;
 }
 

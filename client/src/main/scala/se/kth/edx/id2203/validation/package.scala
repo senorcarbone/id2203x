@@ -2,7 +2,7 @@ package se.kth.edx.id2203
 
 import java.io.{File, FileOutputStream, PrintStream}
 
-import se.kth.edx.id2203.validation.ValidationUtils.{PropertyResult, ValidationGroup, ValidationReport, ValidationResult}
+import se.kth.edx.id2203.validation.ValidationUtils._
 import se.kth.edx.id2203.validation.ValidationUtils.ValidationSimulation._
 import se.kth.edx.id2203.validation.testers._
 import se.sics.kompics.sl._
@@ -109,7 +109,14 @@ package object validation {
   def checkSingleValueConsensus[ACTYPE <: ComponentDefinition: TypeTag]() : Unit = {
     outToFile();
     validateAndPrint("Single Value Consensus", PaxosTester[ACTYPE])
-  } 
+  }
+
+  def checkExample[ACTYPE <: ComponentDefinition: TypeTag]() : Unit = {
+    outToFile();
+    val props = Array(
+      ValidationGroup("Example Run", Array(SimValidator(null,0, "You have run the example successfully!", "", true,true))));
+      validateAndPrint("Game of Life", props);
+  }
   
   def validateAndPrint(componentId: String, props: Iterable[ValidationGroup], maxPoints: Int = 1): Unit = {
     val passed = !props.exists(!_.isValid());

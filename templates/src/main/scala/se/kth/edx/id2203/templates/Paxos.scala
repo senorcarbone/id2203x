@@ -5,7 +5,7 @@ package se.kth.edx.id2203.templates
 import se.kth.edx.id2203.core.ExercisePrimitives.AddressUtils._
 import se.kth.edx.id2203.core.Ports._
 import se.kth.edx.id2203.templates.Paxos._
-import se.kth.edx.id2203.validation.validation._
+import se.kth.edx.id2203.validation._
 import se.sics.kompics.network._
 import se.sics.kompics.sl.{Init, _}
 import se.sics.kompics.{KompicsEvent, ComponentDefinition => _, Port => _}
