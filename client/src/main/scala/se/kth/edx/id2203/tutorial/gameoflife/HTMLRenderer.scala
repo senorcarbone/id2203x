@@ -47,12 +47,16 @@ object HTMLRenderer {
         if (htmlFile.exists()) {
             htmlFile.delete();
         }
-        htmlFile.createNewFile();
-        val writer = new FileWriter(htmlFile);
-        writer.write(fullPage);
-        writer.close();
-        //Desktop.getDesktop().browse(htmlFile.toURI());
-        val linky = p(b("To see the generated output click "), a(href:="static/goltest.html", "here", target := "_blank"));
-        println(linky.render)
+        try {
+            htmlFile.createNewFile();
+            val writer = new FileWriter(htmlFile);
+            writer.write(fullPage);
+            writer.close();
+            //Desktop.getDesktop().browse(htmlFile.toURI());
+            val linky = p(b("To see the generated output click "), a(href := "static/goltest.html", "here", target := "_blank"));
+            println(linky.render)
+        } catch {
+            case e: Throwable => println(s"Run completed but output file could not be generated. Error was: $e")
+        }
     }
 }
