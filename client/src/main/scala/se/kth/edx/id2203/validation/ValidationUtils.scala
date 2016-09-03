@@ -133,7 +133,6 @@ object ValidationUtils {
         }
 
     }
-}
 
     class PropertyObserver(init: PropertyObserverInit) extends ComponentDefinition {
 
