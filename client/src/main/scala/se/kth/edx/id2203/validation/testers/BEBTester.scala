@@ -144,8 +144,19 @@ object BEBTester {
 
     val prop2 =
       Property("Validity")
-          .addValidator(SimValidator(_.getValue(LOG_STATE, classOf[mutable.HashMap[Address, ListBuffer[BEB_Deliver]]])
-            .forall(_._2.foldLeft[Set[Address]](Set.empty[Address])((s,bebmsg) => s+bebmsg.src).containsAll(topology)), 109999,
+          .addValidator(SimValidator(gv => 
+            {
+              val delivered = gv.getValue(LOG_STATE, classOf[mutable.HashMap[Address, ListBuffer[BEB_Deliver]]]);
+              topology.forall(node => {
+                val msgs = delivered.get(node);
+                if(!msgs.isDefined){
+                   false;
+                }
+                else{
+                   msgs.get.foldLeft[Set[Address]](Set.empty[Address])((s,bebmsg) => s+bebmsg.src).containsAll(topology);
+                }
+              })
+            }, 109999,
           " Eventually every correct process delivers every message broadcasted by correct processes", 
             "Not all messages broadcasted by correct processes are eventually delivered to all correct processes")).build();
 

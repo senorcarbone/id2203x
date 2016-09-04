@@ -1,25 +1,24 @@
 package se.kth.edx.id2203.validation.testers
 
 import se.kth.edx.id2203.core.ExercisePrimitives.AddressUtils._
+import se.kth.edx.id2203.core.ExercisePrimitives.PerfectP2PLink
 import se.kth.edx.id2203.core.ExercisePrimitives.PerfectP2PLink.PerfectLinkInit
-import se.kth.edx.id2203.core.ExercisePrimitives.{AddressUtils, PerfectP2PLink, PerfectP2PLink$}
 import se.kth.edx.id2203.core.Ports._
 import se.kth.edx.id2203.core.SimulationPrimitives.{ProxyInterceptor, ProxyInterceptorInit, ScheduleTriggers}
 import se.kth.edx.id2203.validation.ValidationUtils.{Property, SimValidator, ValidationGroup, ValidationSimulation}
-import se.sics.kompics.{KompicsEvent, Start}
 import se.sics.kompics.network.{Address, Network}
+import se.sics.kompics.simulator.SimulationScenario
 import se.sics.kompics.simulator.network.impl.NetworkModels
 import se.sics.kompics.simulator.util.GlobalView
-import se.sics.kompics.simulator.SimulationScenario
 import se.sics.kompics.sl.simulator._
 import se.sics.kompics.sl.{ComponentDefinition, Init, _}
 import se.sics.kompics.timer.Timer
+import se.sics.kompics.{KompicsEvent, Start}
 
 import scala.collection.JavaConversions._
-import scala.collection.mutable._
-import collection.immutable.Set
-import collection.mutable.ListBuffer
+import scala.collection.immutable.Set
 import scala.collection.mutable
+import scala.collection.mutable.{ListBuffer, _}
 import scala.concurrent.duration._
 import scala.reflect.runtime.universe._
 import scala.util.Random
@@ -111,7 +110,7 @@ object RBTester {
 
 
     val topology = (1 to numNodes).map(toAddress(_)).toSet;
-    val correct = (1 to discNodes).map(toAddress(_)).toSet;
+    val correct = topology
     
     //Simulation Operations ----
     val setupOp = Op((_: Unit) => Setup((gv: GlobalView) => gv.setValue(LOG_STATE, HashMap.empty[Address, ListBuffer[RB_Deliver]])).build());
@@ -150,16 +149,32 @@ object RBTester {
 
     val prop2 =
       Property("Validity")
-        .addValidator(SimValidator(_.getValue(LOG_STATE, classOf[mutable.HashMap[Address, ListBuffer[RB_Deliver]]])
-          .forall(_._2.foldLeft[Set[Address]](Set.empty[Address])((s,rbmsg) => s+rbmsg.src).containsAll(topology)), 109999,
-          "Eventually every correct process delivers every message broadcasted by correct processes",
+        .addValidator(SimValidator(gv =>
+        {
+          val delivered = gv.getValue(LOG_STATE, classOf[mutable.HashMap[Address, ListBuffer[RB_Deliver]]]);
+          topology.forall(node => {
+            val msgs = delivered.get(node);
+            if(!msgs.isDefined){
+              false;
+            }
+            else{
+              msgs.get.foldLeft[Set[Address]](Set.empty[Address])((s,bebmsg) => s+bebmsg.src).containsAll(topology);
+            }
+          })
+        }, 109999,
+          " Eventually every correct process delivers every message broadcasted by correct processes",
           "Not all messages broadcasted by correct processes are eventually delivered to all correct processes")).build();
 
     val prop3 =
       Property("Agreement")
-        .addValidator(SimValidator(_.getValue(LOG_STATE, classOf[mutable.HashMap[Address, ListBuffer[RB_Deliver]]])
-          .filter(x => correct.contains(x._1)) //all correct nodes
-          .groupBy(_._2.toSet).size == 1 // have delivered the same messages
+        .addValidator(SimValidator(
+          gv => {
+            val delivered = gv.getValue(LOG_STATE, classOf[mutable.HashMap[Address, ListBuffer[RB_Deliver]]]);
+            val someButSame = delivered.filter(x => correct.contains(x._1)) //all correct nodes
+              .groupBy(_._2.toSet).size == 1 // have delivered the same messages
+            val noneButSame = delivered.forall(_._2 == None);
+            noneButSame || someButSame
+          }
           , 109999,
           "Every message delivered by a correct process is eventually delivered by every other correct process",
           "There exist messages delivered by a subset and not all of the correct processes")).build();

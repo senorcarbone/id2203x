@@ -124,7 +124,8 @@ object CRBTester {
     );
     
     val topology = (1 to numNodes).map(toAddress(_)).toSet;
-
+    val correct = topology;
+    
     //Simulation Operations ----
     val setupOp = Op((_: Unit) => Setup((gv: GlobalView) => gv.setValue(LOG_STATE, HashMap.empty[Address, ListBuffer[CRB_Deliver]])).build());
 
@@ -158,18 +159,36 @@ object CRBTester {
 
     val prop2 =
       Property("Validity")
-        .addValidator(SimValidator(_.getValue(LOG_STATE, classOf[mutable.HashMap[Address, ListBuffer[CRB_Deliver]]])
-          .forall(_._2.foldLeft[Set[Address]](Set.empty[Address])((s,crbmsg) => s+crbmsg.src).containsAll(Set(toAddress(1), toAddress(2)))), 109999,
-          "Eventually every correct process delivers every message broadcasted by correct processes",
+        .addValidator(SimValidator(gv =>
+        {
+          val delivered = gv.getValue(LOG_STATE, classOf[mutable.HashMap[Address, ListBuffer[CRB_Deliver]]]);
+          topology.forall(node => {
+            val del = delivered.get(node);
+            if(!del.isDefined){
+              false;
+            }
+            else{
+              del.get.foldLeft[Set[BroadcastedMessage]](Set.empty[BroadcastedMessage])((s,bebmsg) => s+bebmsg.payload.asInstanceOf[BroadcastedMessage])
+                .containsAll(msgs.toSet[BroadcastedMessage]);
+            }
+          })
+        }, 109999,
+          " Eventually every correct process delivers every message broadcasted by correct processes",
           "Not all messages broadcasted by correct processes are eventually delivered to all correct processes")).build();
-
+    
     val prop3 =
       Property("Agreement")
-        .addValidator(SimValidator(_.getValue(LOG_STATE, classOf[mutable.HashMap[Address, ListBuffer[CRB_Deliver]]])
-          .forall(entry => msgs.forall(msg => entry._2.map(_.payload).contains(msg)))
+        .addValidator(SimValidator(
+          gv => {
+            val delivered = gv.getValue(LOG_STATE, classOf[mutable.HashMap[Address, ListBuffer[CRB_Deliver]]]);
+            val someButSame = delivered.filter(x => correct.contains(x._1)) //all correct nodes
+              .groupBy(_._2.toSet).size == 1 // have delivered the same messages
+            val noneButSame = delivered.forall(_._2 == None);
+            noneButSame || someButSame
+          }
           , 109999,
           "Every message delivered by a correct process is eventually delivered by every other correct process",
-          "There exist messages delivered by a subset but not all of the correct processes")).build();
+          "There exist messages delivered by a subset and not all of the correct processes")).build();
 
     val prop4 =
       Property("Causal Delivery")
