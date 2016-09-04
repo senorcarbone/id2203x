@@ -83,7 +83,7 @@ class ReadImposeWriteConsultMajority(init: Init[ReadImposeWriteConsultMajority])
         wr = w.wr;
         value = w.writeVal;
       }
-      trigger(PL_Send(src, ACK(rid)) -> pLink);
+      trigger(PL_Send(src, ACK(w.rid)) -> pLink);
     }
   }
 
@@ -105,15 +105,17 @@ class ReadImposeWriteConsultMajority(init: Init[ReadImposeWriteConsultMajority])
       }
     }
     case PL_Deliver(src, v: ACK) => handle {
-      acks = acks + 1;
-      if (acks > n / 2) {
-        acks = 0;
-        if (reading) {
-          reading = false;
-          trigger(AR_Read_Response(readval) -> nnar);
-        }
-        else {
-          trigger(AR_Write_Response() -> nnar)
+      if (v.rid == rid) {
+        acks = acks + 1;
+        if (acks > n / 2) {
+          acks = 0;
+          if (reading) {
+            reading = false;
+            trigger(AR_Read_Response(readval) -> nnar);
+          }
+          else {
+            trigger(AR_Write_Response() -> nnar)
+          }
         }
       }
     }
