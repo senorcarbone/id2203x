@@ -96,9 +96,10 @@ case class EPFDValidation(compClass : Class[_ <: ComponentDefinition], numNodes:
   assert(discNodes < numNodes)
 
   val topology = (1 to numNodes).map(AddressUtils.toAddress(_)).toList;
-
-  //dynamic random for failed node selection
   val deathNote = getUniqueKillTargets(discNodes, numNodes);
+  val correct = topology.filter(x => !deathNote.map(x => toAddress(x)).contains(x));
+  //dynamic random for failed node selection
+  val failed = deathNote.map(toAddress(_));
   
   def getUniqueKillTargets(size: Int, max : Int) : Array[Integer] = {
     val extRand = new Random();
@@ -117,32 +118,36 @@ case class EPFDValidation(compClass : Class[_ <: ComponentDefinition], numNodes:
     }
   };
 
-  def validateProperty(gv: GlobalView, suspected: Boolean, entries: List[Address]) : Boolean = {
-    gv.getValue(EPFDTester.GLOBAL_STATE, classOf[mutable.HashMap[Address, ListBuffer[KompicsEvent]]])
-      .filter(n => !deathNote.map(x => toAddress(x)).contains(n))
-      .forall(z =>
-        z._2.foldLeft(HashMap.empty[Address, KompicsEvent])((b, a) =>
-          b += (toEntry(a))).forall(entry => {
-          if (entries.contains(entry._1)) {
+  def validateProperty(gv: GlobalView, suspected: Boolean) : Boolean = {
+    val globalState = gv.getValue(EPFDTester.GLOBAL_STATE, classOf[mutable.HashMap[Address, ListBuffer[KompicsEvent]]]);
+    correct.forall(z =>{
+        val entry = globalState.get(z);
+        // if a failed process is never suspected that is bad, if a correct one is never restored or suspected that is ok...
+        if(suspected && entry.isEmpty) return false else return true;
+        entry.get.foldLeft(HashMap.empty[Address, KompicsEvent])((b, a) =>
+          b += (toEntry(a))).forall(proc => {
+          if (entry.contains(proc._1)) {
             if(suspected){
-              return entry._2.isInstanceOf[Suspect];
+               proc._2.isInstanceOf[Suspect];
             }  else {
-              return entry._2.isInstanceOf[Restore];
+               proc._2.isInstanceOf[Restore];
             }
           }
-          true;
-        }))
+          else{
+            if(suspected) false else true;
+          }
+        })
+      });
   }
 
   val prop1: ValidationGroup = Property("Strong Completeness")
     .addValidator(SimValidator(gv =>
-      validateProperty(gv, true, deathNote.map(toAddress(_)).toList), 100000l,
+      validateProperty(gv, true), 100000l,
       "Every process that crashes is eventually suspected permanently by every correct process",
       "Not every process that crashes is eventually suspected permanently by every correct process")).build()
 
   val prop2: ValidationGroup = Property("Eventual Strong Accuracy")
-    .addValidator(SimValidator(gv =>
-      validateProperty(gv, false, topology.filter(p => !deathNote.map(toAddress(_)).contains(p))), 100000l,
+    .addValidator(SimValidator(gv => validateProperty(gv, false), 100000l,
       "Eventually, no correct process is suspected by any correct process",
       "There exist correct processes that were permanently suspected by correct processes")).build();
 
