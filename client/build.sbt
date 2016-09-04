@@ -35,7 +35,8 @@ libraryDependencies += "ch.qos.logback" % "logback-classic" % "0.9.28"  % "test"
 libraryDependencies += "org.slf4j" % "slf4j-api" % "1.7.5"
 
 
-
+logBuffered in Test := false
+parallelExecution in Test := false
 
 
 publishMavenStyle := true

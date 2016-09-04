@@ -51,6 +51,7 @@ package object validation {
 
     var defaultOutput: PrintStream = System.out;
     var defaultError: PrintStream = System.err;
+    var outputRedirected = false;
 
     case class GradingToken(gradingToken: Array[Byte]);
 
@@ -77,18 +78,22 @@ package object validation {
         System.setErr(pso);
         Console.withOut(System.out) _;
         Console.withErr(System.err) _;
+        outputRedirected = true;
     }
 
     def outReset(): Unit = {
-        System.out.flush();
-        System.err.flush();
-        Console.flush();
-        System.out.close();
-        //System.err.close(); // should be the same here
-        System.setOut(defaultOutput);
-        System.setErr(defaultError);
-        Console.withOut(System.out) _;
-        Console.withErr(System.err) _;
+        if (outputRedirected) {
+            System.out.flush();
+            System.err.flush();
+            Console.flush();
+            System.out.close();
+            //System.err.close(); // should be the same here
+            System.setOut(defaultOutput);
+            System.setErr(defaultError);
+            Console.withOut(System.out) _;
+            Console.withErr(System.err) _;
+            outputRedirected = false;
+        }
     }
 
     def checkEPFD[EPFDTYPE <: ComponentDefinition: TypeTag](): Unit = {

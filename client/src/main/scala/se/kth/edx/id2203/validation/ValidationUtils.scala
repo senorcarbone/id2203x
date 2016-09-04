@@ -126,10 +126,25 @@ object ValidationUtils {
                 simulationFile.delete();
             }
             sc.simulate(classOf[LauncherComp]);
-            val ois = new ObjectInputStream((new FileInputStream(("/tmp/observer"))));
+            val tcxtl = Thread.currentThread().getContextClassLoader();
+//            println(s"ClassLoader: $tcxtl")
+//            val fixedCL = new se.sics.kompics.simulator.instrumentation.JarURLFixClassLoader(tcxtl);
+//            val pCL = tcxtl.getParent;
+//            val svS = "se.kth.edx.id2203.validation.ValidationUtils$SimValidator";
+//            val svUCL = tcxtl.loadClass(svS);
+//            println(s"URL: $svUCL");
+//            val svUPCL = pCL.loadClass(svS)
+//            println(s"parent URL: $svUPCL");
+//            val svU = fixedCL.loadClass(svS);
+//            println(s"fixed URL: $svU");
+//            Thread.currentThread().setContextClassLoader(fixedCL);
+            val ois = new ClassLoaderObjectInputStream(tcxtl, new FileInputStream("/tmp/observer"));
+            //println("Reading properties...");
             val properties = ois.readObject().asInstanceOf[scala.collection.immutable.Set[ValidationGroup]];
+            //println("Read properties.");
             ois.close();
-            return properties;
+            //println("Closed stream");
+            return properties
         }
 
     }
@@ -157,9 +172,11 @@ object ValidationUtils {
         }
 
         def finalizeExecution() = {
+            val result = properties.map(vg => ValidationGroup(vg.id, vg.validators.map(v =>
+                SimValidator(null, v.triggerTime, v.successMsg, v.failureMsg, v.passed, v.triggered))));
+
             val oos = new ObjectOutputStream(new FileOutputStream("/tmp/observer"));
-            oos.writeObject(properties.map(vg => ValidationGroup(vg.id, vg.validators.map(v =>
-                SimValidator(null, v.triggerTime, v.successMsg, v.failureMsg, v.passed, v.triggered)))));
+            oos.writeObject(result);
             oos.flush();
             oos.close
             getGlobalView().terminate();
@@ -195,6 +212,20 @@ object ValidationUtils {
         value match {
             case Some(x) => unfoldValue(x);
             case x       => x;
+        }
+    }
+
+    class ClassLoaderObjectInputStream(classLoader: ClassLoader, in: InputStream) extends ObjectInputStream(in) {
+
+        @throws(classOf[IOException])
+        @throws(classOf[ClassNotFoundException])
+        override protected def resolveClass(desc: ObjectStreamClass): Class[_] = {
+            try {
+                val name = desc.getName();
+                return Class.forName(name, false, classLoader);
+            } catch {
+                case e: ClassNotFoundException => return super.resolveClass(desc);
+            }
         }
     }
 

@@ -118,7 +118,7 @@ object ABDTester {
   }
 
   //FIXME not checked
-  def extractOps(events: ListBuffer[(Address, Long, KompicsEvent)]): ListBuffer[AR_Op] = {
+  def extractOps(events: List[(Address, Long, KompicsEvent)]): List[AR_Op] = {
     events.filter(_._3.isInstanceOf[AR_Read_Request]).zip(events.filter(_._3.isInstanceOf[AR_Read_Response])).map(matches => {
       val req = matches._1.asInstanceOf[(Address, Long, AR_Read_Request)];
       val resp = matches._2.asInstanceOf[(Address, Long, AR_Read_Response)];
@@ -132,7 +132,7 @@ object ABDTester {
 
   def validateLinerizability(triggeredEvents: ListBuffer[(Address, Long, KompicsEvent)]): Boolean = {
 
-    val allOps: ListBuffer[AR_Op] = extractOps(triggeredEvents)
+    val allOps: List[AR_Op] = extractOps(triggeredEvents.toList);
 
     val withReadDependencies = allOps.map(evt => {
       if (!evt.write && evt.value != None) {
