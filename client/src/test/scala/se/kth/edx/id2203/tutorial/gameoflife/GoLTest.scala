@@ -80,7 +80,7 @@ class GoLTest extends FlatSpec with Matchers {
 
     "Game of Life" should "run" in {
         val cellclass = classOf[CellC].asInstanceOf[Class[Cell]]
-        Kompics.createAndStart(classOf[ParentC], GameOfLifeInit(defaultInit, cellclass, toCellCInit, numGenerations = 10));
+        Kompics.createAndStart(classOf[ParentC], GameOfLifeInit(defaultInit, cellclass, toCellCInit, numGenerations = 10), 8);
         Kompics.waitForTermination();
     }
 }

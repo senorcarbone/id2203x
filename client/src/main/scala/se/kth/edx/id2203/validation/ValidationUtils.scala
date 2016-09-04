@@ -127,23 +127,9 @@ object ValidationUtils {
             }
             sc.simulate(classOf[LauncherComp]);
             val tcxtl = Thread.currentThread().getContextClassLoader();
-//            println(s"ClassLoader: $tcxtl")
-//            val fixedCL = new se.sics.kompics.simulator.instrumentation.JarURLFixClassLoader(tcxtl);
-//            val pCL = tcxtl.getParent;
-//            val svS = "se.kth.edx.id2203.validation.ValidationUtils$SimValidator";
-//            val svUCL = tcxtl.loadClass(svS);
-//            println(s"URL: $svUCL");
-//            val svUPCL = pCL.loadClass(svS)
-//            println(s"parent URL: $svUPCL");
-//            val svU = fixedCL.loadClass(svS);
-//            println(s"fixed URL: $svU");
-//            Thread.currentThread().setContextClassLoader(fixedCL);
             val ois = new ClassLoaderObjectInputStream(tcxtl, new FileInputStream("/tmp/observer"));
-            //println("Reading properties...");
             val properties = ois.readObject().asInstanceOf[scala.collection.immutable.Set[ValidationGroup]];
-            //println("Read properties.");
             ois.close();
-            //println("Closed stream");
             return properties
         }
 

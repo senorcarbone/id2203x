@@ -77,7 +77,12 @@ class ParentC(init: GameOfLifeInit) extends ComponentDefinition {
             val centre = grid(i)(j);
             connect(EnvironmentPort)(this.getComponentCore -> centre);
             connect(EnvironmentPort)(centre -> this.getComponentCore);
-            //
+            // make sure we can't connect to ourselves
+            assert(wrap(i - 1) != i);
+            assert(wrap(i + 1) != i);
+            assert(wrap(j - 1) != j);
+            assert(wrap(j + 1) != j);
+            // connect
             connect(EnvironmentPort)(grid(wrap(i - 1))(wrap(j - 1)) -> centre);
             connect(EnvironmentPort)(grid(wrap(i - 1))(j) -> centre);
             connect(EnvironmentPort)(grid(wrap(i - 1))(wrap(j + 1)) -> centre);
@@ -112,12 +117,14 @@ class ParentC(init: GameOfLifeInit) extends ComponentDefinition {
             if (broadcastCount >= gridSize) {
                 val sgc = stateGrid.map(_.clone);
                 stateHistory += sgc;
-                //println(s"Generation $generation:\n${sgc.deep.mkString("\n")}");
+                println(s"Completed generation $generation");
                 broadcastCount = 0l;
                 if (generation < init.numGenerations) {
                     generation += 1;
+                    println(s"Starting generation $generation");
                     trigger(Progress(generation) -> envOut);
                 } else {
+                    println("Finishing up.");
                     val hist = stateHistory.toList;
 //                    println("****** ORIGINAL HISTORY ********")
 //                    hist.foreach { x => println(s"${x.deep.mkString("\n")}"); }
