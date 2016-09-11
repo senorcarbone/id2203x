@@ -123,7 +123,10 @@ case class EPFDValidation(compClass: Class[_ <: ComponentDefinition], numNodes: 
       val entry = globalState.get(z);
       val targetSet = if(suspected) failed.toList else correct;
       // if no failed process is never suspected that is bad, if a correct one is never restored or suspected that is ok...
-      if (suspected && entry.isEmpty) return false else return true;
+      if(entry.isEmpty){
+        if (suspected) return false;
+        else return true;
+      }
       entry.get.foldLeft(HashMap.empty[Address, KompicsEvent])((b, a) =>
         b += (toEntry(a))).filter(next => targetSet.contains(next)).forall(proc => {
         if (entry.contains(proc._1)) {
