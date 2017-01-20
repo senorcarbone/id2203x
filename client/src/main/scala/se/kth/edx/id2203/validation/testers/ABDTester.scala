@@ -116,8 +116,7 @@ object ABDTester {
     connect[BestEffortBroadcast](beb -> nnar);
     connect[AtomicRegister](nnar -> interceptor);
   }
-
-  //FIXME not checked
+  
   def extractOps(events: List[(Address, Long, KompicsEvent)]): List[AR_Op] = {
     events.filter(_._3.isInstanceOf[AR_Read_Request]).zip(events.filter(_._3.isInstanceOf[AR_Read_Response])).map(matches => {
       val req = matches._1.asInstanceOf[(Address, Long, AR_Read_Request)];
