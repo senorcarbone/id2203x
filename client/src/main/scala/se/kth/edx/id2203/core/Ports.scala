@@ -14,6 +14,11 @@ object Ports {
     request[PL_Send];
   }
 
+  object FIFOPerfectLink extends Port {
+    indication[PL_Deliver];
+    request[PL_Send];
+  }
+
   case class Suspect(src: Address) extends KompicsEvent;
   case class Restore(src: Address) extends KompicsEvent;
 
@@ -45,27 +50,41 @@ object Ports {
     indication[CRB_Deliver];
     request[CRB_Broadcast];
   }
-  
-  
+
   case class AR_Read_Request() extends KompicsEvent
   case class AR_Read_Response(value: Option[Any]) extends KompicsEvent
   case class AR_Write_Request(value: Any) extends KompicsEvent
   case class AR_Write_Response() extends KompicsEvent
-  
+
   class AtomicRegister extends Port {
     request[AR_Read_Request]
     request[AR_Write_Request]
     indication[AR_Read_Response]
     indication[AR_Write_Response]
   }
-  
+
   case class C_Decide(value: Any) extends KompicsEvent;
   case class C_Propose(value: Any) extends KompicsEvent;
-  
-  class Consensus extends Port{
+
+  class Consensus extends Port {
     request[C_Propose];
     indication[C_Decide];
   }
-  
+
+  case class BLE_Leader(leader: Address, ballot: Long) extends KompicsEvent;
+
+  object BallotLeaderElection extends Port {
+    indication[BLE_Leader];
+  }
+
+  trait RSM_Command
+
+  case class SC_Propose(value: RSM_Command) extends KompicsEvent;
+  case class SC_Decide(value: RSM_Command) extends KompicsEvent;
+
+  object SequenceConsensus extends Port {
+    request[SC_Propose];
+    indication[SC_Decide];
+  }
 
 }
