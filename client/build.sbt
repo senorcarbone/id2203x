@@ -1,11 +1,11 @@
-val kompicsVersion = "0.9.2-SNAPSHOT"
+val kompicsVersion = "1.0.0-SNAPSHOT"
 
 
 name := "KompicsTeaching"
 
 organization := "se.kth.edx"
 
-scalaVersion := "2.11.8"
+scalaVersion := "2.11.11"
 
 version := kompicsVersion
 

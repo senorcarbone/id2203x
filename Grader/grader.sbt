@@ -4,9 +4,9 @@ organization := "se.kthx"
 
 version := "1.0"
 
-scalaVersion := "2.11.8"
+scalaVersion := "2.11.11"
 
-//resolvers += Resolver.mavenLocal
+resolvers += Resolver.mavenLocal
 
 resolvers += "Kompics Releases" at "http://kompics.sics.se/maven/repository/"
 resolvers += "Kompics Snapshots" at "http://kompics.sics.se/maven/snapshotrepository/"
@@ -30,12 +30,12 @@ libraryDependencies += "com.chuusai" %% "shapeless" % "2.1.0"
 libraryDependencies += "org.scalactic" %% "scalactic" % "3.0.0" % "test"
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.0" % "test"
 libraryDependencies += "com.lihaoyi" %% "scalatags" % "0.6.0"
-libraryDependencies += ("se.kth.edx" %% "kompicsteaching" % "0.9.2-SNAPSHOT").exclude("org.bouncycastle", "bcpg-jdk15on").exclude("org.bouncycastle", "bcprov-jdk15on")
+libraryDependencies += ("se.kth.edx" %% "kompicsteaching" % "1.0.0-SNAPSHOT").exclude("org.bouncycastle", "bcpg-jdk15on").exclude("org.bouncycastle", "bcprov-jdk15on")
 
 
 mainClass in assembly := Some("se.kthx.grader.Main")
 
-mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
+mergeStrategy in assembly ~= (old => 
   {
     case PathList("com", "google", "common", xs @ _*)         => MergeStrategy.first
     case PathList("com", "typesafe", "config", xs @ _*)         => MergeStrategy.first
@@ -45,16 +45,13 @@ mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
     case "logback.xml"             => MergeStrategy.filterDistinctLines
     case x => old(x)
   }
-}
+)
 
-excludedJars in assembly <<= (fullClasspath in assembly) map {
-      cp =>
-        cp filter {
-          c => List(
-            "bcpg-jdk15on-1.55.jar",
-            "bcprov-jdk15on-1.55.jar"
-          ) exists {
-            c.data.getName contains _
-          }
+assemblyExcludedJars := (fullClasspath in assembly).value filter {
+        c => List(
+          "bcpg-jdk15on-1.55.jar",
+          "bcprov-jdk15on-1.55.jar"
+        ) exists {
+          c.data.getName contains _
         }
     }
