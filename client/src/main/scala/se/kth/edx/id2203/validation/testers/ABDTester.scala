@@ -4,17 +4,17 @@ import se.kth.edx.id2203.core.ExercisePrimitives.AddressUtils._
 import se.kth.edx.id2203.core.ExercisePrimitives.PerfectP2PLink
 import se.kth.edx.id2203.core.ExercisePrimitives.PerfectP2PLink._
 import se.kth.edx.id2203.core.Ports._
-import se.kth.edx.id2203.core.SimulationPrimitives.{ProxyInterceptor, ProxyInterceptorInit, ScheduleTriggers}
-import se.kth.edx.id2203.validation.ValidationUtils.{Property, SimValidator, ValidationGroup, ValidationSimulation}
+import se.kth.edx.id2203.core.SimulationPrimitives.{ ProxyInterceptor, ProxyInterceptorInit, ScheduleTriggers }
+import se.kth.edx.id2203.validation.ValidationUtils.{ Property, SimValidator, ValidationGroup, ValidationSimulation }
 import se.kth.edx.id2203.validation.testers.TesterPrimitives.TesterPrimitives._
-import se.sics.kompics.network.{Address, Network}
+import se.sics.kompics.network.{ Address, Network }
 import se.sics.kompics.simulator.SimulationScenario
 import se.sics.kompics.simulator.network.impl.NetworkModels
 import se.sics.kompics.simulator.util.GlobalView
 import se.sics.kompics.sl.simulator._
-import se.sics.kompics.sl.{ComponentDefinition, Init, _}
-import se.sics.kompics.timer.{ScheduleTimeout, Timeout, Timer}
-import se.sics.kompics.{KompicsEvent, Start}
+import se.sics.kompics.sl.{ ComponentDefinition, Init, _ }
+import se.sics.kompics.timer.{ ScheduleTimeout, Timeout, Timer }
+import se.sics.kompics.{ KompicsEvent, Start }
 
 import scala.annotation.tailrec
 import scala.collection.JavaConversions._
@@ -23,12 +23,11 @@ import scala.concurrent.duration._
 import scala.reflect.runtime.universe._
 import scala.util.Random
 
-
 object ABDTester {
 
   val GLOBAL_STATE: String = "simulation.delivered"
 
-  def apply[ARTYPE <: ComponentDefinition : TypeTag](): collection.Iterable[ValidationGroup] = {
+  def apply[ARTYPE <: ComponentDefinition: TypeTag](): collection.Iterable[ValidationGroup] = {
     val seed = 1337;
     SimulationScenario.setSeed(seed);
     ValidationSimulation.runAndValidate(NNRegisterValidation[ARTYPE](8, 4, 50l, 100, 50, 90).scenario);
@@ -75,14 +74,14 @@ object ABDTester {
       case x: AR_Read_Response => handle {
         val gv = cfg.getValue[GlobalView]("simulation.globalview");
         val globalState = gv.getValue(GLOBAL_STATE, classOf[ListBuffer[(Address, Long, KompicsEvent)]]);
-//        println(s"${System.currentTimeMillis()} -- INTERCEPTOR :: Reader ${toRank(self)} FINISHED $x")
+        //        println(s"${System.currentTimeMillis()} -- INTERCEPTOR :: Reader ${toRank(self)} FINISHED $x")
         globalState.add((self, System.currentTimeMillis(), x));
         gv.setValue(GLOBAL_STATE, globalState);
       }
       case x: AR_Write_Response => handle {
         val gv = cfg.getValue[GlobalView]("simulation.globalview");
         val globalState = gv.getValue(GLOBAL_STATE, classOf[ListBuffer[(Address, Long, KompicsEvent)]]);
-//        println(s"${System.currentTimeMillis()} -- INTERCEPTOR :: Writer ${toRank(self)} FINISHED $x")
+        //        println(s"${System.currentTimeMillis()} -- INTERCEPTOR :: Writer ${toRank(self)} FINISHED $x")
         globalState.add((self, System.currentTimeMillis(), x));
         gv.setValue(GLOBAL_STATE, globalState);
       }
@@ -96,8 +95,8 @@ object ABDTester {
   class NNARParent(init: Init[NNARParent]) extends ComponentDefinition {
 
     val (selfAddr, topology, nnarClass, proxyInit) = init match {
-      case Init(s: Address, t: collection.immutable.Set[Address]@unchecked, nnarClass: Class[ComponentDefinition]@unchecked,
-      m: ProxyInterceptorInit) => (s, t, nnarClass, m)
+      case Init(s: Address, t: collection.immutable.Set[Address] @unchecked, nnarClass: Class[ComponentDefinition] @unchecked,
+        m: ProxyInterceptorInit) => (s, t, nnarClass, m)
     };
 
     val timer = requires[Timer];
@@ -111,12 +110,12 @@ object ABDTester {
     connect[Network](network -> pp2p);
     connect[Timer](timer -> interceptor);
 
-    connect[PerfectLink](pp2p -> beb);
-    connect[PerfectLink](pp2p -> nnar);
+    connect(PerfectLink)(pp2p -> beb);
+    connect(PerfectLink)(pp2p -> nnar);
     connect[BestEffortBroadcast](beb -> nnar);
     connect[AtomicRegister](nnar -> interceptor);
   }
-  
+
   def extractOps(events: List[(Address, Long, KompicsEvent)]): List[AR_Op] = {
     events.filter(_._3.isInstanceOf[AR_Read_Request]).zip(events.filter(_._3.isInstanceOf[AR_Read_Response])).map(matches => {
       val req = matches._1.asInstanceOf[(Address, Long, AR_Read_Request)];
@@ -137,16 +136,15 @@ object ABDTester {
       if (!evt.write && evt.value != None) {
         val writeMatches = allOps.filter(writeop => writeop.write && writeop.value == evt.value)
         if (!writeMatches.isEmpty) AR_Op(false, evt.value, evt.start, evt.stop, evt.edges + writeMatches.get(0)) else evt
-      }
-      else evt;
+      } else evt;
     });
 
     val withOrderDependencies = withReadDependencies.map(evt => {
       val succ = withReadDependencies.filter(evt2 => evt.start > evt2.stop);
-      AR_Op(evt.write, evt.value, evt.start, evt.stop, evt.edges++succ);
+      AR_Op(evt.write, evt.value, evt.start, evt.stop, evt.edges ++ succ);
     }).toSet
 
-//    println(withOrderDependencies)
+    //    println(withOrderDependencies)
 
     checkLinearizability(Set(Linerization(withOrderDependencies, None)));
   }
@@ -170,8 +168,7 @@ object ABDTester {
     //if no linearizable pending branches exist then it's a dead-end
     if (extended.isEmpty) {
       return false;
-    }
-    else if (extended.exists(branch => branch._1.pend.isEmpty)) {
+    } else if (extended.exists(branch => branch._1.pend.isEmpty)) {
       return true;
     }
     //expand linearizations
@@ -183,22 +180,21 @@ object ABDTester {
   }
 
   /**
-    * (N,N) Atomic Register
-    *
-    * Properties Checked
-    * ------------------ 
-    *
-    * NNAR1: Termination: If a correct process invokes an operation, then the operation eventually completes.
-    * NNAR2: Atomicity: Every read operation returns the value that was written most recently in a hypothetical execution, 
-    * where every failed operation appears to be complete or does not appear to have been invoked at all, 
-    * and every complete operation appears to have been executed at some instant between its invocation and its completion.
-    *
-    */
+   * (N,N) Atomic Register
+   *
+   * Properties Checked
+   * ------------------
+   *
+   * NNAR1: Termination: If a correct process invokes an operation, then the operation eventually completes.
+   * NNAR2: Atomicity: Every read operation returns the value that was written most recently in a hypothetical execution,
+   * where every failed operation appears to be complete or does not appear to have been invoked at all,
+   * and every complete operation appears to have been executed at some instant between its invocation and its completion.
+   *
+   */
 
   case class AR_Op(write: Boolean, value: Option[Any], start: Long, stop: Long, edges: Set[AR_Op]);
 
-
-  case class NNRegisterValidation[ARTYPE <: ComponentDefinition : TypeTag](numNodes: Int, numWriters: Int, netFixedLatency: Long, freq: Int, writeSkew: Int, readSkew: Int) {
+  case class NNRegisterValidation[ARTYPE <: ComponentDefinition: TypeTag](numNodes: Int, numWriters: Int, netFixedLatency: Long, freq: Int, writeSkew: Int, readSkew: Int) {
 
     import Distributions._
 
@@ -239,7 +235,7 @@ object ABDTester {
           "There is no hypothetical global execution where all read operations can return the value that was written most recently")).build();
 
     val scenario =
-      ValidationSimulation(prop1, prop2) inParallel(
+      ValidationSimulation(prop1, prop2) inParallel (
         raise(1, setupOp).arrival(Distributions.constant(0l)),
         raise(1, setConstantLatencyNetwork(), constant(netFixedLatency)).arrival(constant(0)),
         raise(numNodes, startNNAR, 1.toN).arrival(constant(0l))) andThen 1000000.millis afterTermination Terminate;

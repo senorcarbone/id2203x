@@ -3,12 +3,12 @@
 package se.kth.edx.id2203.templates
 
 import se.kth.edx.id2203.core.Ports._
-import se.kth.edx.id2203.templates.EPFD._  //toremove
+import se.kth.edx.id2203.templates.EPFD._ //toremove
 import se.kth.edx.id2203.validation._
 import se.sics.kompics.network._
-import se.sics.kompics.sl.{Init, _}
-import se.sics.kompics.timer.{ScheduleTimeout, Timeout, Timer}
-import se.sics.kompics.{KompicsEvent, Start, ComponentDefinition => _, Port => _}
+import se.sics.kompics.sl.{ Init, _ }
+import se.sics.kompics.timer.{ ScheduleTimeout, Timeout, Timer }
+import se.sics.kompics.{ KompicsEvent, Start, ComponentDefinition => _, Port => _ }
 
 import scala.collection.mutable._
 
@@ -21,13 +21,12 @@ object EPFD {
   case class Heartbeat() extends KompicsEvent;
 }
 
-
 //Define EPFD Implementation
 class EPFD(epfdInit: Init[EPFD]) extends ComponentDefinition {
 
   //EPFD subscriptions
   val timer = requires[Timer];
-  val pLink = requires[PerfectLink];
+  val pLink = requires(PerfectLink);
   val epfd = provides[EventuallyPerfectFailureDetector];
 
   // EPDF component state and initialization

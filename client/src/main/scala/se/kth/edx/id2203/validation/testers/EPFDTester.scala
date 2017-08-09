@@ -2,11 +2,11 @@ package se.kth.edx.id2203.validation.testers
 
 import se.kth.edx.id2203.core.ExercisePrimitives.AddressUtils._
 import se.kth.edx.id2203.core.ExercisePrimitives.PerfectP2PLink.PerfectLinkInit
-import se.kth.edx.id2203.core.ExercisePrimitives.{AddressUtils, PerfectP2PLink}
+import se.kth.edx.id2203.core.ExercisePrimitives.{ AddressUtils, PerfectP2PLink }
 import se.kth.edx.id2203.core.Ports._
-import se.kth.edx.id2203.validation.ValidationUtils.{Property, SimValidator, ValidationGroup, ValidationSimulation}
+import se.kth.edx.id2203.validation.ValidationUtils.{ Property, SimValidator, ValidationGroup, ValidationSimulation }
 import se.sics.kompics.KompicsEvent
-import se.sics.kompics.network.{Address, Network}
+import se.sics.kompics.network.{ Address, Network }
 import se.sics.kompics.simulator.adaptor.distributions.extra.GenIntSequentialDistribution
 import se.sics.kompics.simulator.network.identifier.Identifier
 import se.sics.kompics.simulator.network.identifier.impl.SocketIdExtractor
@@ -14,8 +14,8 @@ import se.sics.kompics.simulator.network.impl.NetworkModels
 import se.sics.kompics.simulator.network.impl.NetworkModels._
 import se.sics.kompics.simulator.util.GlobalView
 import se.sics.kompics.simulator.SimulationScenario
-import se.sics.kompics.sl.{ComponentDefinition, Init, _}
-import se.sics.kompics.sl.simulator.{Op, StartNode, _}
+import se.sics.kompics.sl.{ ComponentDefinition, Init, _ }
+import se.sics.kompics.sl.simulator.{ Op, StartNode, _ }
 import se.sics.kompics.timer.Timer
 
 import scala.collection.JavaConversions._
@@ -30,7 +30,7 @@ object EPFDTester {
 
   val GLOBAL_STATE: String = "simulation.delivered"
 
-  def apply[C <: ComponentDefinition : TypeTag](): collection.Iterable[ValidationGroup] = {
+  def apply[C <: ComponentDefinition: TypeTag](): collection.Iterable[ValidationGroup] = {
     val seed = 123;
     SimulationScenario.setSeed(seed);
     ValidationSimulation.runAndValidate(EPFDValidation(asJavaClass[C](typeOf[C]), 15, 3, 100l, 50, 200).scenario);
@@ -72,22 +72,22 @@ class EPFDParent(init: Init[EPFDParent]) extends ComponentDefinition {
   val interceptor = create(classOf[EPFDInterceptor], Init[EPFDInterceptor](addr));
 
   connect[Network](network -> pp2p);
-  connect[PerfectLink](pp2p -> epfd);
+  connect(PerfectLink)(pp2p -> epfd);
   connect[Timer](timer -> epfd);
   connect[EventuallyPerfectFailureDetector](epfd -> interceptor);
 
 }
 
 /**
-  * Eventually Perfect Failure Detector
-  *
-  * Properties Checked
-  * ------------------ 
-  *
-  * EPFD1: Strong completeness: Eventually, every process that crashes is permanently suspected by every correct process.
-  * EPFD2: Eventual strong accuracy: Eventually, no correct process is suspected by any correct process.
-  *
-  */
+ * Eventually Perfect Failure Detector
+ *
+ * Properties Checked
+ * ------------------
+ *
+ * EPFD1: Strong completeness: Eventually, every process that crashes is permanently suspected by every correct process.
+ * EPFD2: Eventual strong accuracy: Eventually, no correct process is suspected by any correct process.
+ *
+ */
 case class EPFDValidation(compClass: Class[_ <: ComponentDefinition], numNodes: Int, discNodes: Int, delay: Long, delta: Long, maxLinkDelay: Long) {
 
   import Distributions._
@@ -121,9 +121,9 @@ case class EPFDValidation(compClass: Class[_ <: ComponentDefinition], numNodes: 
     val globalState = gv.getValue(EPFDTester.GLOBAL_STATE, classOf[mutable.HashMap[Address, ListBuffer[KompicsEvent]]]);
     correct.forall(z => {
       val entry = globalState.get(z);
-      val targetSet = if(suspected) failed.toList else correct;
+      val targetSet = if (suspected) failed.toList else correct;
       // if no failed process is never suspected that is bad, if a correct one is never restored or suspected that is ok...
-      if(entry.isEmpty){
+      if (entry.isEmpty) {
         if (suspected) return false;
         else return true;
       }
@@ -135,8 +135,7 @@ case class EPFDValidation(compClass: Class[_ <: ComponentDefinition], numNodes: 
           } else {
             proc._2.isInstanceOf[Restore];
           }
-        }
-        else {
+        } else {
           if (suspected) false else true;
         }
       })
@@ -171,7 +170,7 @@ case class EPFDValidation(compClass: Class[_ <: ComponentDefinition], numNodes: 
   val killOP = Op { (self: Integer) => KillNode(AddressUtils.toAddress(self)) }
 
   val scenario =
-    ValidationSimulation(prop1, prop2) inParallel(
+    ValidationSimulation(prop1, prop2) inParallel (
       raise(1, setupOp).arrival(Distributions.constant(0)), raise(1, setUniformDelay(), constant(maxLinkDelay)).arrival(constant(0)),
       raise(numNodes, startEPFDs, 1.toN).arrival(constant(0))) andThen 10000.millis afterTermination
       raise(1, delayOp).arrival(constant(0)) andThen 500.millis afterTermination

@@ -2,17 +2,17 @@ package se.kth.edx.id2203.validation.testers
 
 import se.kth.edx.id2203.core.ExercisePrimitives.AddressUtils._
 import se.kth.edx.id2203.core.ExercisePrimitives.PerfectP2PLink.PerfectLinkInit
-import se.kth.edx.id2203.core.ExercisePrimitives.{PerfectP2PLink}
+import se.kth.edx.id2203.core.ExercisePrimitives.{ PerfectP2PLink }
 import se.kth.edx.id2203.core.Ports._
-import se.kth.edx.id2203.core.SimulationPrimitives.{ProxyInterceptor, ProxyInterceptorInit, ScheduleTriggers}
-import se.kth.edx.id2203.validation.ValidationUtils.{Property, SimValidator, ValidationGroup, ValidationSimulation}
-import se.sics.kompics.{KompicsEvent, Start}
-import se.sics.kompics.network.{Address, Network}
+import se.kth.edx.id2203.core.SimulationPrimitives.{ ProxyInterceptor, ProxyInterceptorInit, ScheduleTriggers }
+import se.kth.edx.id2203.validation.ValidationUtils.{ Property, SimValidator, ValidationGroup, ValidationSimulation }
+import se.sics.kompics.{ KompicsEvent, Start }
+import se.sics.kompics.network.{ Address, Network }
 import se.sics.kompics.simulator.network.impl.NetworkModels
 import se.sics.kompics.simulator.util.GlobalView
 import se.sics.kompics.simulator.SimulationScenario
 import se.sics.kompics.sl.simulator._
-import se.sics.kompics.sl.{ComponentDefinition, Init, _}
+import se.sics.kompics.sl.{ ComponentDefinition, Init, _ }
 import se.sics.kompics.timer.Timer
 
 import scala.collection.JavaConversions._
@@ -28,7 +28,7 @@ object CRBTester {
 
   val LOG_STATE: String = "simulation.delivered"
 
-  def apply[BEBTYPE <: ComponentDefinition : TypeTag, RBTYPE <: ComponentDefinition : TypeTag, CRBTYPE <: ComponentDefinition : TypeTag](): collection.Iterable[ValidationGroup] = {
+  def apply[BEBTYPE <: ComponentDefinition: TypeTag, RBTYPE <: ComponentDefinition: TypeTag, CRBTYPE <: ComponentDefinition: TypeTag](): collection.Iterable[ValidationGroup] = {
     val seed = 123;
     SimulationScenario.setSeed(seed);
     ValidationSimulation.runAndValidate(CRBValidation[BEBTYPE, RBTYPE, CRBTYPE](2).scenario);
@@ -40,8 +40,7 @@ object CRBTester {
 
   case class BroadcastedMessage(src: Address, seq: Int) extends InterceptorPayload(seq);
 
-
-  class CRBInterceptor(init : Init[CRBInterceptor]) extends ProxyInterceptor[CausalOrderReliableBroadcast]{
+  class CRBInterceptor(init: Init[CRBInterceptor]) extends ProxyInterceptor[CausalOrderReliableBroadcast] {
 
     val (self, pInit) = init match {
       case Init(s: Address, proxyInit: ProxyInterceptorInit) => (s, proxyInit)
@@ -75,8 +74,8 @@ object CRBTester {
 
     val (selfAddr, topology, bebClass, rbClass, crbClass, proxyInit) = init match {
       case Init(s: Address, t: Set[Address] @unchecked, bebc: Class[ComponentDefinition] @unchecked,
-      rbc: Class[ComponentDefinition] @unchecked, crbc: Class[ComponentDefinition] @unchecked, 
-      m: ProxyInterceptorInit) => (s, t, bebc, rbc, crbc, m)
+        rbc: Class[ComponentDefinition] @unchecked, crbc: Class[ComponentDefinition] @unchecked,
+        m: ProxyInterceptorInit) => (s, t, bebc, rbc, crbc, m)
     };
 
     val timer = requires[Timer];
@@ -91,59 +90,57 @@ object CRBTester {
     connect[Network](network -> pp2p);
     connect[Timer](timer -> interceptor);
 
-    connect[PerfectLink](pp2p -> beb);
+    connect(PerfectLink)(pp2p -> beb);
     connect[BestEffortBroadcast](beb -> rb);
     connect[ReliableBroadcast](rb -> crb);
     connect[CausalOrderReliableBroadcast](crb -> interceptor);
   }
 
   /**
-    * Causal-Order Reliable Broadcast Validation
-    *
-    * Properties Checked
-    * ------------------ 
-    * CRB1: Validity: If a correct process broadcasts a message m, then every correct process eventually delivers m.
-    * CRB2: No duplication: No message is delivered more than once.
-    * CRB3: No creation: If a process delivers a message m with sender s, then m was previously broadcast by process s.
-    * CRB4: Agreement: If a message m is delivered by some correct process, then m is eventually delivered by every correct process.
-    * CRB5: Causal delivery: For any message m1 that potentially caused a message m2, i.e., m1 → m2, 
-    *       no process delivers m2 unless it has already delivered m1.
-    */
+   * Causal-Order Reliable Broadcast Validation
+   *
+   * Properties Checked
+   * ------------------
+   * CRB1: Validity: If a correct process broadcasts a message m, then every correct process eventually delivers m.
+   * CRB2: No duplication: No message is delivered more than once.
+   * CRB3: No creation: If a process delivers a message m with sender s, then m was previously broadcast by process s.
+   * CRB4: Agreement: If a message m is delivered by some correct process, then m is eventually delivered by every correct process.
+   * CRB5: Causal delivery: For any message m1 that potentially caused a message m2, i.e., m1 → m2,
+   *       no process delivers m2 unless it has already delivered m1.
+   */
 
-  case class CRBValidation[BEBTYPE <: ComponentDefinition : TypeTag, RBTYPE <: ComponentDefinition : TypeTag, CRBTYPE <: ComponentDefinition : TypeTag](numNodes: Int) {
+  case class CRBValidation[BEBTYPE <: ComponentDefinition: TypeTag, RBTYPE <: ComponentDefinition: TypeTag, CRBTYPE <: ComponentDefinition: TypeTag](numNodes: Int) {
 
     import Distributions._
-    
+
     //random val for unique messages per experiment
     val rand = new Random();
-    
+
     val msgs = Array(
       new BroadcastedMessage(toAddress(2), rand.nextInt()),
       new BroadcastedMessage(toAddress(1), rand.nextInt()),
-      new BroadcastedMessage(toAddress(1), rand.nextInt())
-    );
-    
+      new BroadcastedMessage(toAddress(1), rand.nextInt()));
+
     val topology = (1 to numNodes).map(toAddress(_)).toSet;
     val correct = topology;
-    
+
     //Simulation Operations ----
     val setupOp = Op((_: Unit) => Setup((gv: GlobalView) => gv.setValue(LOG_STATE, HashMap.empty[Address, ListBuffer[CRB_Deliver]])).build());
 
     val setNetworkDelay = () => Op((maxDelay: java.lang.Long) => ChangeNetwork(NetworkModels.withConstantDelay(maxDelay)));
 
     val startCRB = Op((self: Integer) => StartNode(toAddress(self), Init[CRBParent](toAddress(self), topology,
-      asJavaClass[BEBTYPE](typeOf[BEBTYPE]), asJavaClass[RBTYPE](typeOf[RBTYPE]),  asJavaClass[CRBTYPE](typeOf[CRBTYPE]),
+      asJavaClass[BEBTYPE](typeOf[BEBTYPE]), asJavaClass[RBTYPE](typeOf[RBTYPE]), asJavaClass[CRBTYPE](typeOf[CRBTYPE]),
       ScheduleTriggers(toAddress(self))(
-        (toAddress(1), 100, CRB_Broadcast(msgs(1))), 
+        (toAddress(1), 100, CRB_Broadcast(msgs(1))),
         (toAddress(1), 500, CRB_Broadcast(msgs(2))),
-        (toAddress(2), 1400, CRB_Broadcast(msgs(0)))
-      ))));
+        (toAddress(2), 1400, CRB_Broadcast(msgs(0)))))));
 
     val prop1 =
       Property("No Duplication-No Creation")
         .addValidator(SimValidator(_.getValue(LOG_STATE, classOf[HashMap[Address, ListBuffer[CRB_Deliver]]])
           .forall(_._2.forall {
-            case x@CRB_Deliver(src, y: BroadcastedMessage) => {
+            case x @ CRB_Deliver(src, y: BroadcastedMessage) => {
               msgs.contains(y)
             }
             case _ => {
@@ -160,22 +157,21 @@ object CRBTester {
     val prop2 =
       Property("Validity")
         .addValidator(SimValidator(gv =>
-        {
-          val delivered = gv.getValue(LOG_STATE, classOf[mutable.HashMap[Address, ListBuffer[CRB_Deliver]]]);
-          topology.forall(node => {
-            val del = delivered.get(node);
-            if(!del.isDefined){
-              false;
-            }
-            else{
-              del.get.foldLeft[Set[BroadcastedMessage]](Set.empty[BroadcastedMessage])((s,bebmsg) => s+bebmsg.payload.asInstanceOf[BroadcastedMessage])
-                .containsAll(msgs.toSet[BroadcastedMessage]);
-            }
-          })
-        }, 109999,
+          {
+            val delivered = gv.getValue(LOG_STATE, classOf[mutable.HashMap[Address, ListBuffer[CRB_Deliver]]]);
+            topology.forall(node => {
+              val del = delivered.get(node);
+              if (!del.isDefined) {
+                false;
+              } else {
+                del.get.foldLeft[Set[BroadcastedMessage]](Set.empty[BroadcastedMessage])((s, bebmsg) => s + bebmsg.payload.asInstanceOf[BroadcastedMessage])
+                  .containsAll(msgs.toSet[BroadcastedMessage]);
+              }
+            })
+          }, 109999,
           " Eventually every correct process delivers every message broadcasted by correct processes",
           "Not all messages broadcasted by correct processes are eventually delivered to all correct processes")).build();
-    
+
     val prop3 =
       Property("Agreement")
         .addValidator(SimValidator(
@@ -185,24 +181,22 @@ object CRBTester {
               .groupBy(_._2.toSet).size == 1 // have delivered the same messages
             val noneButSame = delivered.forall(_._2 == None);
             noneButSame || someButSame
-          }
-          , 109999,
+          }, 109999,
           "Every message delivered by a correct process is eventually delivered by every other correct process",
           "There exist messages delivered by a subset and not all of the correct processes")).build();
 
     val prop4 =
       Property("Causal Delivery")
         .addValidator(SimValidator(_.getValue(LOG_STATE, classOf[mutable.HashMap[Address, ListBuffer[CRB_Deliver]]])
-          .forall(_._2.map(_.payload.asInstanceOf[BroadcastedMessage].seq).toList == msgs.map(_.seq).toList)
-          , 109999,
+          .forall(_._2.map(_.payload.asInstanceOf[BroadcastedMessage].seq).toList == msgs.map(_.seq).toList), 109999,
           "All messages delivered respect causality order",
           "Some delivered messages violate causality guarantees. Make sure happened-before relations are maintained")).build();
 
     val scenario =
-      ValidationSimulation(prop2, prop1, prop3, prop4) inParallel(
+      ValidationSimulation(prop2, prop1, prop3, prop4) inParallel (
         raise(1, setupOp).arrival(Distributions.constant(0l)), raise(1, setNetworkDelay(), constant(1500l)).arrival(constant(0)),
         raise(numNodes, startCRB, 1.toN).arrival(constant(0l))) andThen 200.millis afterTermination
-        raise(1, setNetworkDelay(), constant(100l)).arrival(constant(0)) andThen 1000000.millis afterTermination Terminate;    
+        raise(1, setNetworkDelay(), constant(100l)).arrival(constant(0)) andThen 1000000.millis afterTermination Terminate;
   }
 
 }

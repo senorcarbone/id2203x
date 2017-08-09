@@ -7,8 +7,8 @@ import se.kth.edx.id2203.core.Ports._
 import se.kth.edx.id2203.templates.Paxos._
 import se.kth.edx.id2203.validation._
 import se.sics.kompics.network._
-import se.sics.kompics.sl.{Init, _}
-import se.sics.kompics.{KompicsEvent, ComponentDefinition => _, Port => _}
+import se.sics.kompics.sl.{ Init, _ }
+import se.sics.kompics.{ KompicsEvent, ComponentDefinition => _, Port => _ }
 import scala.language.implicitConversions
 import scala.collection.mutable.ListBuffer;
 
@@ -23,9 +23,9 @@ object Paxos {
   case class Decided(decidedValue: Any) extends KompicsEvent;
 
   /**
-    * This augments tuples with comparison operators implicitly, which you can use in your code, for convenience. 
-    * examples: (1,2) > (1,4) yields 'false' and  (5,4) <= (7,4) yields 'true' 
-    */
+   * This augments tuples with comparison operators implicitly, which you can use in your code, for convenience.
+   * examples: (1,2) > (1,4) yields 'false' and  (5,4) <= (7,4) yields 'true'
+   */
   implicit def addComparators[A](x: A)(implicit o: math.Ordering[A]): o.Ops = o.mkOrderingOps(x);
 
 }
@@ -36,7 +36,7 @@ class Paxos(paxosInit: Init[Paxos]) extends ComponentDefinition {
 
   val consensus = provides[Consensus];
   val beb = requires[BestEffortBroadcast];
-  val plink = requires[PerfectLink];
+  val plink = requires(PerfectLink);
 
   //Internal State of Paxos
 
@@ -72,15 +72,13 @@ class Paxos(paxosInit: Init[Paxos]) extends ComponentDefinition {
     }
   }
 
-
   beb uponEvent {
 
     case BEB_Deliver(src, prep: Prepare) => handle {
       if (promisedBallot < prep.proposalBallot) {
         promisedBallot = prep.proposalBallot;
         trigger(PL_Send(src, Promise(promisedBallot, acceptedBallot, acceptedValue)) -> plink);
-      }
-      else {
+      } else {
         trigger(PL_Send(src, Nack(prep.proposalBallot)) -> plink);
       }
     };
@@ -93,13 +91,12 @@ class Paxos(paxosInit: Init[Paxos]) extends ComponentDefinition {
         acceptedBallot = acc.acceptBallot;
         acceptedValue = Some(acc.proposedValue);
         trigger(PL_Send(src, Accepted(acc.acceptBallot)) -> plink);
-      }
-      else {
+      } else {
         trigger(PL_Send(src, Nack(acc.acceptBallot)) -> plink);
       }
     };
 
-    case BEB_Deliver(src, dec : Decided) => handle {
+    case BEB_Deliver(src, dec: Decided) => handle {
       if (!decided) {
         trigger(C_Decide(dec.decidedValue) -> consensus);
         decided = true;
