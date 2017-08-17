@@ -15,7 +15,7 @@ final case class TAddress(isa: InetSocketAddress) extends Address {
   override def hashCode(): Int = {
     val addrBytes = isa.getAddress.getAddress;
     val portBytes = com.google.common.primitives.Ints.toByteArray(isa.getPort);
-    val bytes = Array(109, addrBytes(0), addrBytes(1), addrBytes(2), addrBytes(3), portBytes(3), addrBytes(4)); // arbitrary prime byte
+    val bytes = Array(109, addrBytes(0), addrBytes(1), addrBytes(2), addrBytes(3), portBytes(3)); // arbitrary prime byte
     java.util.Arrays.hashCode(bytes)
   }
 }

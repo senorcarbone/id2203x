@@ -2,10 +2,13 @@ package se.kth.edx.id2203.templates
 
 import se.sics.kompics.sl._
 import se.sics.kompics.network._
-import se.kth.edx.id2203.core.Ports._;
-import se.sics.kompics.{ Start, KompicsEvent };
-import se.sics.kompics.timer.{ ScheduleTimeout, Timeout, Timer }
+import se.kth.edx.id2203.core.Ports._
+import se.sics.kompics.{KompicsEvent, Start}
+import se.sics.kompics.timer.{ScheduleTimeout, Timeout, Timer}
+
 import collection.mutable
+import se.kth.edx.id2203.validation.checkBLE;
+
 
 object GossipLeaderElection {
   case class CheckTimeout(timeout: ScheduleTimeout) extends Timeout(timeout);
@@ -41,10 +44,10 @@ class GossipLeaderElection(init: Init[GossipLeaderElection]) extends ComponentDe
   val self = init match {
     case Init(s: Address) => s
   }
-  val topology = cfg.getValue[List[Address]]("epfd.simulation.topology");
-  val delta = cfg.getValue[Long]("epfd.simulation.delay");
+  val topology = cfg.getValue[List[Address]]("ble.simulation.topology");
+  val delta = cfg.getValue[Long]("ble.simulation.delay");
 
-  private var period = cfg.getValue[Long]("epfd.simulation.delay");
+  private var period = cfg.getValue[Long]("ble.simulation.delay");
   private val alive = {
     val elems = topology.map(a => (a -> None.asInstanceOf[Option[Long]]));
     mutable.Map(elems: _*)
@@ -53,7 +56,7 @@ class GossipLeaderElection(init: Init[GossipLeaderElection]) extends ComponentDe
 
   private var ballot = ballotFromNAddress(0, self);
 
-  private var leader: (Long, Address) = null;
+  private var leader: Option[(Long, Address)] = None;
 
   private def startTimer(delay: Long): Unit = {
     val scheduledTimeout = new ScheduleTimeout(period);
@@ -62,19 +65,31 @@ class GossipLeaderElection(init: Init[GossipLeaderElection]) extends ComponentDe
   }
 
   private def checkLeader() {
-    val newLeader = alive.foldLeft((ballot, self)) {
-      case ((accBallot, accP), (p, Some(n))) => if (n > accBallot) (n -> p) else (accBallot, accP)
+    val topProcess = alive.foldLeft((ballot, self)) {
+      case (tmp, (p, Some(n))) if (n > tmp._1) => (n -> p)
+      case (tmp, (_, Some(n))) if (n <= tmp._1) => tmp
+      case (tmp, (_, None))  => tmp
     }
-    if (newLeader != leader) {
-      if (newLeader._2 == self) {
-        while (ballot < leader._1) {
-          ballot = incrementBallotBy(ballot, 1);
+
+    leader match{
+      case Some((bal, _)) =>
+        if(topProcess != leader.get){
+          if (topProcess._2 == self) {
+            while (ballot < bal) {
+              ballot = incrementBallotBy(ballot, 1);
+            }
+            leader = Some((ballot, self))
+            trigger (BLE_Leader(self, ballot) -> ble);
+          } else {
+            leader = Some(topProcess)
+            trigger (BLE_Leader(topProcess._2, topProcess._1) -> ble);
+          }
         }
-        trigger (BLE_Leader(self, ballot) -> ble);
-      } else {
-        trigger (BLE_Leader(newLeader._2, newLeader._1) -> ble);
-      }
+      case None =>
+        leader = Some(topProcess)
+        trigger (BLE_Leader(topProcess._2, topProcess._1) -> ble);
     }
+
   }
 
   ctrl uponEvent {
@@ -85,6 +100,7 @@ class GossipLeaderElection(init: Init[GossipLeaderElection]) extends ComponentDe
 
   timer uponEvent {
     case CheckTimeout(_) => handle {
+
       if (!alive.keySet.intersect(suspected).isEmpty) {
         period = period + delta;
       }
@@ -97,6 +113,7 @@ class GossipLeaderElection(init: Init[GossipLeaderElection]) extends ComponentDe
         }
         trigger(PL_Send(p, Heartbeat(ballot)) -> pl);
       }
+
       checkLeader();
       alive.clear();
       startTimer(period);
@@ -109,3 +126,8 @@ class GossipLeaderElection(init: Init[GossipLeaderElection]) extends ComponentDe
     }
   }
 }
+
+object BLETemplate extends App {
+  checkBLE[GossipLeaderElection];
+}
+

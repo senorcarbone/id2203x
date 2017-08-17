@@ -96,6 +96,11 @@ package object validation {
         }
     }
 
+    def checkBLE[BLETYPE <: ComponentDefinition: TypeTag](): Unit = {
+        outToFile();
+        validateAndPrint("Ballot Leader Election", BLETester[BLETYPE]())
+    }
+
     def checkEPFD[EPFDTYPE <: ComponentDefinition: TypeTag](): Unit = {
         outToFile();
         validateAndPrint("Eventually Perfect Failure Detector", EPFDTester[EPFDTYPE]())
