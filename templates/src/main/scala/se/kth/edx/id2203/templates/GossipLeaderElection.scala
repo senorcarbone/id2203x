@@ -3,16 +3,16 @@ package se.kth.edx.id2203.templates
 import se.sics.kompics.sl._
 import se.sics.kompics.network._
 import se.kth.edx.id2203.core.Ports._
-import se.sics.kompics.{KompicsEvent, Start}
-import se.sics.kompics.timer.{ScheduleTimeout, Timeout, Timer}
+import se.sics.kompics.{ KompicsEvent, Start }
+import se.sics.kompics.timer.{ ScheduleTimeout, Timeout, Timer }
 
 import collection.mutable
 import se.kth.edx.id2203.validation.checkBLE;
 
-
 object GossipLeaderElection {
   case class CheckTimeout(timeout: ScheduleTimeout) extends Timeout(timeout);
-  case class Heartbeat(ballot: Long) extends KompicsEvent;
+  case class HeartbeatReq(round: Long, highestBallot: Long) extends KompicsEvent;
+  case class HeartbeatResp(round: Long, ballot: Long) extends KompicsEvent;
 
   private val ballotOne = 0x0100000000l;
 
@@ -48,15 +48,13 @@ class GossipLeaderElection(init: Init[GossipLeaderElection]) extends ComponentDe
   val delta = cfg.getValue[Long]("ble.simulation.delay");
 
   private var period = cfg.getValue[Long]("ble.simulation.delay");
-  private val alive = {
-    val elems = topology.map(a => (a -> None.asInstanceOf[Option[Long]]));
-    mutable.Map(elems: _*)
-  }
-  private val suspected = mutable.Set.empty[Address];
+  private val ballots = mutable.Map.empty[Address, Long];
 
+  private var round = 0l;
   private var ballot = ballotFromNAddress(0, self);
 
   private var leader: Option[(Long, Address)] = None;
+  private var highestBallot: Long = ballot;
 
   private def startTimer(delay: Long): Unit = {
     val scheduledTimeout = new ScheduleTimeout(period);
@@ -64,32 +62,45 @@ class GossipLeaderElection(init: Init[GossipLeaderElection]) extends ComponentDe
     trigger(scheduledTimeout -> timer);
   }
 
+  private def becomeLeader() {
+    while (ballot <= highestBallot) {
+      ballot = incrementBallotBy(ballot, 1);
+    }
+    highestBallot = ballot;
+    leader = Some((ballot, self))
+    trigger (BLE_Leader(self, ballot) -> ble);
+  }
+
+  private def makeLeader(topProcess: (Long, Address)) {
+    highestBallot = topProcess._1;
+    leader = Some(topProcess)
+    trigger (BLE_Leader(topProcess._2, topProcess._1) -> ble);
+  }
+
   private def checkLeader() {
-    val topProcess = alive.foldLeft((ballot, self)) {
-      case (tmp, (p, Some(n))) if (n > tmp._1) => (n -> p)
-      case (tmp, (_, Some(n))) if (n <= tmp._1) => tmp
-      case (tmp, (_, None))  => tmp
+    val topProcess = ballots.foldLeft((ballot, self)) {
+      case (acc, (p, n)) if (n > acc._1)  => (n -> p)
+      case (acc, (_, n)) if (n <= acc._1) => acc
     }
 
-    leader match{
-      case Some((bal, _)) =>
-        if(topProcess != leader.get){
-          if (topProcess._2 == self) {
-            while (ballot < bal) {
-              ballot = incrementBallotBy(ballot, 1);
+    if (topProcess._1 < highestBallot) {
+      becomeLeader(); // either the old leader has died or we didn't have one, yet, or the timeouts aren't settled, yet
+    } else {
+      leader match {
+        case Some((b, p)) => {
+          if (topProcess != leader.get) {
+            if (p == self) {
+              becomeLeader();
+            } else {
+              makeLeader(topProcess);
             }
-            leader = Some((ballot, self))
-            trigger (BLE_Leader(self, ballot) -> ble);
-          } else {
-            leader = Some(topProcess)
-            trigger (BLE_Leader(topProcess._2, topProcess._1) -> ble);
-          }
+          } // else no change
         }
-      case None =>
-        leader = Some(topProcess)
-        trigger (BLE_Leader(topProcess._2, topProcess._1) -> ble);
+        case None => {
+          makeLeader(topProcess);
+        }
+      }
     }
-
   }
 
   ctrl uponEvent {
@@ -100,29 +111,34 @@ class GossipLeaderElection(init: Init[GossipLeaderElection]) extends ComponentDe
 
   timer uponEvent {
     case CheckTimeout(_) => handle {
-
-      if (!alive.keySet.intersect(suspected).isEmpty) {
-        period = period + delta;
-      }
-
-      for (p <- topology) {
-        if (!alive.contains(p) && !suspected.contains(p)) {
-          suspected += p;
-        } else if (alive.contains(p) && suspected.contains(p)) {
-          suspected -= p;
-        }
-        trigger(PL_Send(p, Heartbeat(ballot)) -> pl);
-      }
-
       checkLeader();
-      alive.clear();
+
+      round += 1;
+      for (p <- topology) {
+        trigger(PL_Send(p, HeartbeatReq(round, highestBallot)) -> pl);
+      }
+
+      ballots.clear();
       startTimer(period);
     }
   }
 
   pl uponEvent {
-    case PL_Deliver(src, Heartbeat(n)) => handle {
-      alive += (src -> Some(n))
+    case PL_Deliver(src, HeartbeatReq(r, hb)) => handle {
+      if (hb > highestBallot) {
+        highestBallot = hb;
+      }
+      trigger(PL_Send(src, HeartbeatResp(r, ballot)) -> pl);
+    }
+    case PL_Deliver(src, HeartbeatResp(r, b)) => handle {
+      if (r == round) {
+        ballots += (src -> b)
+      } else {
+        period += delta;
+        if (b > highestBallot) {
+          highestBallot = b;
+        }
+      }
     }
   }
 }

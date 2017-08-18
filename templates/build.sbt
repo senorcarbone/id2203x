@@ -25,8 +25,8 @@ libraryDependencies += "se.sics.kompics.basic" % "kompics-component-netty-networ
 libraryDependencies += "com.jsuereth" %% "scala-arm" % "1.4"
 
 //libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value
-libraryDependencies += "org.scalactic" %% "scalactic" % "3.0.0" % "test"
-libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.0" % "test"
+libraryDependencies += "org.scalactic" %% "scalactic" % "3.0.1" % "test"
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.1" % "test"
 libraryDependencies += "ch.qos.logback" % "logback-classic" % "0.9.28" % "test"
 libraryDependencies ++= Seq("org.slf4j" % "slf4j-api" % "1.7.5", "org.slf4j" % "slf4j-simple" % "1.7.5")
 libraryDependencies += "se.kth.edx" %% "kompicsteaching" % kompicsVersion
