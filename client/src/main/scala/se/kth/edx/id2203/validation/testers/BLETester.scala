@@ -133,16 +133,16 @@ object BLETester {
     
     def validateMonotonicity(gv: GlobalView): Boolean = {
       val globalState = gv.getValue(BLETester.GLOBAL_STATE, classOf[mutable.HashMap[Address, ListBuffer[BLE_Leader]]]);
-
-      val eventualleader = correct.map(z => globalState.get(z).get.last.leader).head
       
-      globalState.get(eventualleader).get.foldLeft((0, true):(Long, Boolean))((b, next) => {
-        b match {
-          case (prev, false) => b;
-          case (prev, true) =>
-            if(prev < next.ballot) (next.ballot, true) else (next.ballot, false);
-        }
-      })._2
+      correct.forall(z => {
+        globalState.get(z).get.foldLeft((0, true):(Long, Boolean))((b, next) => {
+          b match {
+            case (prev, false) => b;
+            case (prev, true) =>
+              if(prev < next.ballot) (next.ballot, true) else (next.ballot, false);
+          }
+        })._2
+      })
     }
 
     val prop1: ValidationGroup = Property("Eventual Correctness")
