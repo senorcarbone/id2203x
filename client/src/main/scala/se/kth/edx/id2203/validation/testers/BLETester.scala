@@ -2,18 +2,18 @@ package se.kth.edx.id2203.validation.testers
 
 import se.kth.edx.id2203.core.ExercisePrimitives.AddressUtils._
 import se.kth.edx.id2203.core.ExercisePrimitives.PerfectP2PLink.PerfectLinkInit
-import se.kth.edx.id2203.core.ExercisePrimitives.{ AddressUtils, PerfectP2PLink }
+import se.kth.edx.id2203.core.ExercisePrimitives.{AddressUtils, PerfectP2PLink}
 import se.kth.edx.id2203.core.Ports._
-import se.kth.edx.id2203.validation.ValidationUtils.{ Property, SimValidator, ValidationGroup, ValidationSimulation }
-import se.sics.kompics.network.{ Address, Network }
+import se.kth.edx.id2203.validation.ValidationUtils.{Property, SimValidator, ValidationGroup, ValidationSimulation}
+import se.sics.kompics.network.{Address, Network}
 import se.sics.kompics.simulator.network.identifier.Identifier
 import se.sics.kompics.simulator.network.identifier.impl.SocketIdExtractor
 import se.sics.kompics.simulator.network.impl.NetworkModels
 import se.sics.kompics.simulator.network.impl.NetworkModels._
 import se.sics.kompics.simulator.util.GlobalView
 import se.sics.kompics.simulator.SimulationScenario
-import se.sics.kompics.sl.{ ComponentDefinition, Init, _ }
-import se.sics.kompics.sl.simulator.{ Op, StartNode, _ }
+import se.sics.kompics.sl.{ComponentDefinition, Init, _}
+import se.sics.kompics.sl.simulator.{Op, StartNode, _}
 import se.sics.kompics.timer.Timer
 
 import scala.collection.JavaConversions._
@@ -94,10 +94,9 @@ object BLETester {
 
     val topology = (1 to numNodes).map(AddressUtils.toAddress(_)).toList;
 //    val deathOrder = getUniqueKillTargets(discNodes, numNodes);
-    val deathOrder = (numNodes-discNodes to numNodes).map(Integer.valueOf(_)).toArray[Integer];
-    val correct = topology.filter(x => !deathOrder.map(x => toAddress(x)).contains(x));
-    //dynamic random for failed node selection
-    val failed = deathOrder.map(toAddress(_));
+    val sorted = topology.map(x => (x, x.hashCode())).sortBy(_._2).map(_._1);
+    val failed = sorted.takeRight(discNodes)
+    val correct = sorted.take(numNodes-discNodes)
 
     def getUniqueKillTargets(size: Int, max: Int): Array[Integer] = {
       val extRand = new Random();
@@ -170,7 +169,7 @@ object BLETester {
       Init[BLEParent](AddressUtils.toAddress(self), compClass),
       Map("ble.simulation.topology" -> topology, "ble.simulation.delay" -> delay, "ble.simulation.delta" -> delta)));
 
-    val killOP = Op { (self: Integer) => KillNode(AddressUtils.toAddress(self)) }
+    val killOP = Op { (self: Integer) => KillNode(sorted(self.toInt)) }
 
     val scenario =
       ValidationSimulation(prop1, prop2) inParallel(
@@ -178,7 +177,7 @@ object BLETester {
         raise(numNodes, startBLEs, 1.toN).arrival(constant(0))) andThen 10000.millis afterTermination
         raise(1, delayOp).arrival(constant(0)) andThen 500.millis afterTermination
         raise(1, setUniformDelay(), constant(0)).arrival(constant(0)) andThen 10000.millis afterTermination
-        raise(discNodes+1, killOP, Distributions.intSeq(Range.inclusive(numNodes-discNodes,numNodes))).arrival(constant(0)) andThen 10000000l.millis afterTermination Terminate;
+        raise(discNodes, killOP, Distributions.intSeq(((numNodes-discNodes) until numNodes))).arrival(constant(0)) andThen 10000000l.millis afterTermination Terminate;
   }
 
 }

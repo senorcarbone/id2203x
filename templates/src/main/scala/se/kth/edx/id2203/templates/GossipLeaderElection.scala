@@ -1,17 +1,20 @@
 package se.kth.edx.id2203.templates
 
-import se.sics.kompics.sl._
-import se.sics.kompics.network._
 import se.kth.edx.id2203.core.Ports._
-import se.sics.kompics.{ KompicsEvent, Start }
-import se.sics.kompics.timer.{ ScheduleTimeout, Timeout, Timer }
+import se.kth.edx.id2203.validation.checkBLE
+import se.sics.kompics.network._
+import se.sics.kompics.sl._
+import se.sics.kompics.timer.{ScheduleTimeout, Timeout, Timer}
+import se.sics.kompics.{KompicsEvent, Start}
 
-import collection.mutable
-import se.kth.edx.id2203.validation.checkBLE;
+import scala.collection.mutable;
 
 object GossipLeaderElection {
+
   case class CheckTimeout(timeout: ScheduleTimeout) extends Timeout(timeout);
+
   case class HeartbeatReq(round: Long, highestBallot: Long) extends KompicsEvent;
+
   case class HeartbeatResp(round: Long, ballot: Long) extends KompicsEvent;
 
   private val ballotOne = 0x0100000000l;
@@ -35,6 +38,7 @@ object GossipLeaderElection {
 }
 
 class GossipLeaderElection(init: Init[GossipLeaderElection]) extends ComponentDefinition {
+
   import GossipLeaderElection._
 
   val ble = provides(BallotLeaderElection);
@@ -66,20 +70,20 @@ class GossipLeaderElection(init: Init[GossipLeaderElection]) extends ComponentDe
     while (ballot <= highestBallot) {
       ballot = incrementBallotBy(ballot, 1);
     }
-    highestBallot = ballot;
+    //    highestBallot = ballot;
     leader = Some((ballot, self))
-    trigger (BLE_Leader(self, ballot) -> ble);
+    trigger(BLE_Leader(self, ballot) -> ble);
   }
 
   private def makeLeader(topProcess: (Long, Address)) {
     highestBallot = topProcess._1;
     leader = Some(topProcess)
-    trigger (BLE_Leader(topProcess._2, topProcess._1) -> ble);
+    trigger(BLE_Leader(topProcess._2, topProcess._1) -> ble);
   }
 
   private def checkLeader() {
     val topProcess = ballots.foldLeft((ballot, self)) {
-      case (acc, (p, n)) if (n > acc._1)  => (n -> p)
+      case (acc, (p, n)) if (n > acc._1) => (n -> p)
       case (acc, (_, n)) if (n <= acc._1) => acc
     }
 
@@ -89,7 +93,7 @@ class GossipLeaderElection(init: Init[GossipLeaderElection]) extends ComponentDe
       leader match {
         case Some((b, p)) => {
           if (topProcess != leader.get) {
-            if (p == self) {
+            if (topProcess._2 == self) {
               becomeLeader();
             } else {
               makeLeader(topProcess);
@@ -115,7 +119,8 @@ class GossipLeaderElection(init: Init[GossipLeaderElection]) extends ComponentDe
 
       round += 1;
       for (p <- topology) {
-        trigger(PL_Send(p, HeartbeatReq(round, highestBallot)) -> pl);
+        if (p != self)
+          trigger(PL_Send(p, HeartbeatReq(round, highestBallot)) -> pl);
       }
 
       ballots.clear();
@@ -125,9 +130,9 @@ class GossipLeaderElection(init: Init[GossipLeaderElection]) extends ComponentDe
 
   pl uponEvent {
     case PL_Deliver(src, HeartbeatReq(r, hb)) => handle {
-      if (hb > highestBallot) {
-        highestBallot = hb;
-      }
+      //      if (hb > highestBallot) {
+      //        highestBallot = hb;
+      //      }
       trigger(PL_Send(src, HeartbeatResp(r, ballot)) -> pl);
     }
     case PL_Deliver(src, HeartbeatResp(r, b)) => handle {
@@ -135,9 +140,9 @@ class GossipLeaderElection(init: Init[GossipLeaderElection]) extends ComponentDe
         ballots += (src -> b)
       } else {
         period += delta;
-        if (b > highestBallot) {
-          highestBallot = b;
-        }
+        //        if (b > highestBallot) {
+        //          highestBallot = b;
+        //        }
       }
     }
   }

@@ -13,7 +13,7 @@ object ExercisePrimitives {
   object AddressUtils {
 
     def toAddress(x: Int): Address = {
-      TAddress(new InetSocketAddress(InetAddress.getByName("192.168.2." + x.toString), 1000))
+      new TAddress(new InetSocketAddress(InetAddress.getByName("192.168.2." + x.toString), 1000))
     }
 
     def toRank(addr: Address): Int = {

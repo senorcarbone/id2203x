@@ -96,6 +96,11 @@ package object validation {
     }
   }
 
+  def checkSequenceConsensus[BLETYPE <: ComponentDefinition: TypeTag](): Boolean = {
+    outToFile();
+    validateAndPrint("Sequence Consensus", SequencePaxosTester[BLETYPE]())
+  }
+  
   def checkBLE[BLETYPE <: ComponentDefinition: TypeTag](): Boolean = {
     outToFile();
     validateAndPrint("Ballot Leader Election", BLETester[BLETYPE]())
@@ -128,7 +133,7 @@ package object validation {
 
   def checkSingleValueConsensus[ACTYPE <: ComponentDefinition: TypeTag](): Boolean = {
     outToFile();
-    validateAndPrint("Single Value Consensus", PaxosTester[ACTYPE])
+    validateAndPrint("Single Value Consensus", SequencePaxosTester[ACTYPE])
   }
 
   def checkExample[ACTYPE <: ComponentDefinition: TypeTag](): Boolean = {
