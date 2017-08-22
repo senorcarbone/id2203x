@@ -4,8 +4,8 @@ import se.kth.edx.id2203.core.Ports._
 import se.kth.edx.id2203.validation.checkBLE
 import se.sics.kompics.network._
 import se.sics.kompics.sl._
-import se.sics.kompics.timer.{ScheduleTimeout, Timeout, Timer}
-import se.sics.kompics.{KompicsEvent, Start}
+import se.sics.kompics.timer.{ ScheduleTimeout, Timeout, Timer }
+import se.sics.kompics.{ KompicsEvent, Start }
 
 import scala.collection.mutable;
 
@@ -66,15 +66,6 @@ class GossipLeaderElection(init: Init[GossipLeaderElection]) extends ComponentDe
     trigger(scheduledTimeout -> timer);
   }
 
-  private def becomeLeader() {
-    while (ballot <= highestBallot) {
-      ballot = incrementBallotBy(ballot, 1);
-    }
-    //    highestBallot = ballot;
-    leader = Some((ballot, self))
-    trigger(BLE_Leader(self, ballot) -> ble);
-  }
-
   private def makeLeader(topProcess: (Long, Address)) {
     highestBallot = topProcess._1;
     leader = Some(topProcess)
@@ -83,21 +74,20 @@ class GossipLeaderElection(init: Init[GossipLeaderElection]) extends ComponentDe
 
   private def checkLeader() {
     val topProcess = ballots.foldLeft((ballot, self)) {
-      case (acc, (p, n)) if (n > acc._1) => (n -> p)
+      case (acc, (p, n)) if (n > acc._1)  => (n -> p)
       case (acc, (_, n)) if (n <= acc._1) => acc
     }
 
     if (topProcess._1 < highestBallot) {
-      becomeLeader(); // either the old leader has died or we didn't have one, yet, or the timeouts aren't settled, yet
+      while (ballot <= highestBallot) {
+        ballot = incrementBallotBy(ballot, 1);
+      }
+      leader = None;
     } else {
       leader match {
-        case Some((b, p)) => {
-          if (topProcess != leader.get) {
-            if (topProcess._2 == self) {
-              becomeLeader();
-            } else {
-              makeLeader(topProcess);
-            }
+        case Some(l) => {
+          if (topProcess != l) {
+            makeLeader(topProcess);
           } // else no change
         }
         case None => {
@@ -130,9 +120,9 @@ class GossipLeaderElection(init: Init[GossipLeaderElection]) extends ComponentDe
 
   pl uponEvent {
     case PL_Deliver(src, HeartbeatReq(r, hb)) => handle {
-      //      if (hb > highestBallot) {
-      //        highestBallot = hb;
-      //      }
+      if (hb > highestBallot) {
+        highestBallot = hb;
+      }
       trigger(PL_Send(src, HeartbeatResp(r, ballot)) -> pl);
     }
     case PL_Deliver(src, HeartbeatResp(r, b)) => handle {
