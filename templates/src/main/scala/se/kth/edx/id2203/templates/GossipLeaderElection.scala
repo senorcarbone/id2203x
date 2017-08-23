@@ -50,6 +50,7 @@ class GossipLeaderElection(init: Init[GossipLeaderElection]) extends ComponentDe
   }
   val topology = cfg.getValue[List[Address]]("ble.simulation.topology");
   val delta = cfg.getValue[Long]("ble.simulation.delay");
+  val majority = Math.ceil(topology.size.doubleValue() / 2.0 + 1.0).intValue();
 
   private var period = cfg.getValue[Long]("ble.simulation.delay");
   private val ballots = mutable.Map.empty[Address, Long];
@@ -73,6 +74,9 @@ class GossipLeaderElection(init: Init[GossipLeaderElection]) extends ComponentDe
   }
 
   private def checkLeader() {
+    if ((ballots.size + 1) < majority) {
+      return ; // we can't talk to enough people to even try to elect a leader...just wait
+    }
     val topProcess = ballots.foldLeft((ballot, self)) {
       case (acc, (p, n)) if (n > acc._1)  => (n -> p)
       case (acc, (_, n)) if (n <= acc._1) => acc
