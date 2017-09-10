@@ -2,8 +2,10 @@ package se.kth.edx.id2203.templates
 
 import se.sics.kompics.sl._
 import se.sics.kompics.network._
-import se.kth.edx.id2203.core.Ports._;
-import se.sics.kompics.{ KompicsEvent };
+import se.kth.edx.id2203.core.Ports.{SequenceConsensus, _}
+import se.sics.kompics.KompicsEvent
+import se.kth.edx.id2203.validation._
+
 import collection.mutable
 
 object SequencePaxos {
@@ -30,9 +32,9 @@ class SequencePaxos(init: Init[SequencePaxos]) extends ComponentDefinition {
   import State._
   import Role._
 
-  val sc = provides(SequenceConsensus);
+  val sc = provides[SequenceConsensus];
   val ble = requires(BallotLeaderElection);
-  val pl = requires(FIFOPerfectLink);
+  val pl = requires[FIFOPerfectLink];
 
   val (self, pi, others) = init match {
     case Init(addr: Address, pi: Set[Address] @unchecked) => (addr, pi, pi - addr)
@@ -176,4 +178,10 @@ class SequencePaxos(init: Init[SequencePaxos]) extends ComponentDefinition {
       }
     }
   }
+}
+
+
+
+object SeqConsensus extends App {
+  checkSequenceConsensus[SequencePaxos]();
 }
