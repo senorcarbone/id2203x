@@ -30,7 +30,7 @@ class SequencePaxos(init: Init[SequencePaxos]) extends ComponentDefinition {
   import State._
   import Role._
 
-  val sc = provides[SequenceConsensus];
+  val sc = provides(SequenceConsensus);
   val ble = requires(BallotLeaderElection);
   val pl = requires(FIFOPerfectLink);
 

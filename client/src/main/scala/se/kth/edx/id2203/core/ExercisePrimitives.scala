@@ -1,12 +1,16 @@
 package se.kth.edx.id2203.core
 
-import java.net.{ InetAddress, InetSocketAddress }
+import java.net.{InetAddress, InetSocketAddress}
 
+import se.kth.edx.id2203.core.ExercisePrimitives.FifoP2PLink.{FifoLinkInit, FifoPayload}
 import se.kth.edx.id2203.core.ExercisePrimitives.PerfectP2PLink._
 import se.kth.edx.id2203.core.Ports._
-import se.sics.kompics.{ Init, KompicsEvent }
-import se.sics.kompics.network.{ Address, Network, Transport }
-import se.sics.kompics.sl.{ ComponentDefinition, _ }
+import se.sics.kompics.{Init, KompicsEvent}
+import se.sics.kompics.network.{Address, Network, Transport}
+import se.sics.kompics.sl.{ComponentDefinition, _}
+import se.kth.edx.id2203.core._
+
+import scala.collection.mutable
 
 object ExercisePrimitives {
 
@@ -46,6 +50,45 @@ object ExercisePrimitives {
       }
     }
 
+  }
+  
+  object FifoP2PLink {
+    case class FifoLinkInit(self: Address, topology: Set[Address]) extends Init[FifoP2PLink];
+    case class FifoPayload(payload: KompicsEvent, seq: Int) extends KompicsEvent
+  }
+  
+  class FifoP2PLink(fifop2pInit: FifoLinkInit) extends ComponentDefinition {
+    
+    val fifoLink = provides[FIFOPerfectLink];
+    val pLink = requires(PerfectLink); 
+    
+    val self = fifop2pInit.self;
+    val topology = fifop2pInit.topology;
+    
+    val lsn  = collection.mutable.Map[Address, Int]().withDefaultValue(0);
+    val next = collection.mutable.Map[Address, Int]().withDefaultValue(1);
+    val pending = collection.mutable.Map[Address, mutable.Set[(Int, KompicsEvent)]]().withDefaultValue(mutable.Set.empty);
+    
+    fifoLink uponEvent {
+      case PL_Send(dest, payload) => handle {
+        lsn += dest -> (lsn(dest) + 1);
+        trigger(PL_Send(dest, FifoPayload(payload, lsn(dest))) -> pLink);
+      }
+    }
+    
+    pLink uponEvent {
+      case PL_Deliver(p, FifoPayload(payload, num)) => handle {
+        pending(p) += ((num, payload))
+        
+        while(pending(p) map(_._1) contains next(p) ){
+          val toDeliver = (pending(p) filter (_._1 == next(p)) head)
+          next(p) += 1;
+          pending(p) -= toDeliver
+          trigger(PL_Deliver(p, toDeliver._2) -> fifoLink);
+        }
+      }
+    }
+    
   }
 
   case class VectorClock(var vc: Map[Address, Int]) {

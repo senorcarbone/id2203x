@@ -14,7 +14,7 @@ object Ports {
     request[PL_Send];
   }
 
-  object FIFOPerfectLink extends Port {
+  class FIFOPerfectLink extends Port {
     indication[PL_Deliver];
     request[PL_Send];
   }

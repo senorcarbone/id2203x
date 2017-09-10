@@ -118,7 +118,7 @@ object BEBTester {
 
     val startBEB = Op((self: Integer) => StartNode(toAddress(self), Init[BEBParent](toAddress(self), topology, asJavaClass[BEB_TYPE](typeOf[BEB_TYPE]),
       ScheduleTriggers(
-        (9000l, BEB_Broadcast(new BroadcastedMessage(toAddress(self), simmsg)))))));
+        (9000l,  BEB_Broadcast(new BroadcastedMessage(toAddress(self), simmsg)))))));
 
     val prop1 =
       Property("No Duplication-No Creation")
