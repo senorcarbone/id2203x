@@ -39,7 +39,7 @@ class SequencePaxos(init: Init[SequencePaxos]) extends ComponentDefinition {
   val (self, pi, others) = init match {
     case Init(addr: Address, pi: Set[Address] @unchecked) => (addr, pi, pi - addr)
   }
-  val majority = Math.ceil(pi.size.doubleValue() / 2.0 + 1.0).intValue();
+  val majority = (pi.size / 2) + 1;
 
   var state = (FOLLOWER, UNKOWN);
   var nL = 0l;

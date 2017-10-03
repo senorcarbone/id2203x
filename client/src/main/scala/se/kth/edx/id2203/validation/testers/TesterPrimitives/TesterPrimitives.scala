@@ -67,7 +67,7 @@ object TesterPrimitives {
     }
     val topology = cfg.getValue[Set[Address]]("ble.simulation.topology");
     val delta = cfg.getValue[Long]("ble.simulation.delay");
-    val majority = Math.ceil(topology.size.doubleValue() / 2.0 + 1.0).intValue();
+    val majority = (topology.size / 2) + 1;
 
     private var period = cfg.getValue[Long]("ble.simulation.delay");
     private val ballots = mutable.Map.empty[Address, Long];

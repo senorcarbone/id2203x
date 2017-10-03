@@ -31,7 +31,7 @@ object BLETester {
   def apply[C <: ComponentDefinition : TypeTag](): collection.Iterable[ValidationGroup] = {
     val seed = 123;
     SimulationScenario.setSeed(seed);
-    ValidationSimulation.runAndValidate(BLEValidation(asJavaClass[C](typeOf[C]), 15, 3, 100l, 50, 200).scenario);
+    ValidationSimulation.runAndValidate(BLEValidation(asJavaClass[C](typeOf[C]), 15, 3, 100l,   50, 200).scenario);
   }
 
 

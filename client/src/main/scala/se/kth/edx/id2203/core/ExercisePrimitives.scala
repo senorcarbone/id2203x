@@ -50,7 +50,7 @@ object ExercisePrimitives {
       }
     }
 
-  }
+  }                     
   
   object FifoP2PLink {
     case class FifoLinkInit(self: Address, topology: Set[Address]) extends Init[FifoP2PLink];
