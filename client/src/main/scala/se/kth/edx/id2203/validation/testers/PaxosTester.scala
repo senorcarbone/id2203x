@@ -6,23 +6,24 @@ import se.kth.edx.id2203.core.ExercisePrimitives.AddressUtils._
 import se.kth.edx.id2203.core.ExercisePrimitives.PerfectP2PLink
 import se.kth.edx.id2203.core.ExercisePrimitives.PerfectP2PLink._
 import se.kth.edx.id2203.core.Ports._
-import se.kth.edx.id2203.core.SimulationPrimitives.{ ProxyInterceptor, ProxyInterceptorInit, ScheduleTriggers }
+import se.kth.edx.id2203.core.SimulationPrimitives.{ProxyInterceptor, ProxyInterceptorInit, ScheduleTriggers}
 import se.kth.edx.id2203.validation.ValidationUtils
-import se.kth.edx.id2203.validation.ValidationUtils.{ Property, SimValidator, ValidationGroup, ValidationSimulation }
+import se.kth.edx.id2203.validation.ValidationUtils.{Property, SimValidator, ValidationGroup, ValidationSimulation}
 import se.kth.edx.id2203.validation.testers.TesterPrimitives.TesterPrimitives._
-import se.sics.kompics.network.{ Address, Network }
+import se.sics.kompics.network.{Address, Network}
 import se.sics.kompics.simulator.SimulationScenario
 import se.sics.kompics.simulator.network.impl.NetworkModels
 import se.sics.kompics.simulator.util.GlobalView
 import se.sics.kompics.sl.simulator._
-import se.sics.kompics.sl.{ ComponentDefinition, Init, _ }
+import se.sics.kompics.sl.{ComponentDefinition, Init, _}
 import se.sics.kompics.timer.Timer
-import se.sics.kompics.{ KompicsEvent, Start }
+import se.sics.kompics.{KompicsEvent, Start}
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable._
 import collection.immutable.Set
 import collection.mutable.ListBuffer
+import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.reflect.runtime.universe._
 import scala.util.Random
@@ -142,8 +143,11 @@ object PaxosTester {
 
     val prop2 =
       Property("Uniform Agreement")
-        .addValidator(SimValidator(_.getValue(LOG_STATE, classOf[HashMap[Address, ListBuffer[C_Decide]]])
-          .groupBy(_._2).size == 1, 109999,
+        .addValidator(SimValidator(gv =>
+          {
+            val decided = gv.getValue(LOG_STATE, classOf[mutable.HashMap[Address, ListBuffer[C_Decide]]])
+            decided.isEmpty || decided.groupBy(_._2).size == 1
+          }, 109999,
           "There were no two nodes deciding different values",
           "There were different decided values among different nodes")).build();
 
