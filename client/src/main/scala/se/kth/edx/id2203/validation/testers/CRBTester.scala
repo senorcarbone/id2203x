@@ -132,16 +132,16 @@ object CRBTester {
     val startCRB = Op((self: Integer) => StartNode(toAddress(self), Init[CRBParent](toAddress(self), topology,
       asJavaClass[BEBTYPE](typeOf[BEBTYPE]), asJavaClass[RBTYPE](typeOf[RBTYPE]), asJavaClass[CRBTYPE](typeOf[CRBTYPE]),
       ScheduleTriggers(toAddress(self))(
-        (toAddress(1), 100, CRB_Broadcast(msgs(1))),
-        (toAddress(1), 500, CRB_Broadcast(msgs(2))),
-        (toAddress(2), 1400, CRB_Broadcast(msgs(0)))))));
+        (msgs(1).src, 100, CRB_Broadcast(msgs(1))),
+        (msgs(2).src, 500, CRB_Broadcast(msgs(2))),
+        (msgs(0).src, 1400, CRB_Broadcast(msgs(0)))))));
 
     val prop1 =
       Property("No Duplication-No Creation")
         .addValidator(SimValidator(_.getValue(LOG_STATE, classOf[HashMap[Address, ListBuffer[CRB_Deliver]]])
           .forall(_._2.forall {
             case x @ CRB_Deliver(src, y: BroadcastedMessage) => {
-              msgs.contains(y)
+              y.src == src && msgs.contains(y)
             }
             case _ => {
               false;

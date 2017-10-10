@@ -108,7 +108,7 @@ object RBTester {
     import Distributions._
 
     val topology = (1 to numNodes).map(toAddress(_)).toSet;
-    val correct = topology
+    val correct = (1 to (numNodes-discNodes)).map(toAddress(_)).toSet; 
 
     //Simulation Operations ----
     val setupOp = Op((_: Unit) => Setup((gv: GlobalView) => gv.setValue(LOG_STATE, HashMap.empty[Address, ListBuffer[RB_Deliver]])).build());
@@ -149,7 +149,7 @@ object RBTester {
         .addValidator(SimValidator(gv =>
           {
             val delivered = gv.getValue(LOG_STATE, classOf[mutable.HashMap[Address, ListBuffer[RB_Deliver]]]);
-            topology.forall(node => {
+            correct.forall(node => {
               val msgs = delivered.get(node);
               if (!msgs.isDefined) {
                 false;
