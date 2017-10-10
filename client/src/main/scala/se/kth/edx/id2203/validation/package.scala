@@ -133,7 +133,7 @@ package object validation {
 
   def checkSingleValueConsensus[ACTYPE <: ComponentDefinition: TypeTag](): Boolean = {
     outToFile();
-    validateAndPrint("Single Value Consensus", SequenceConsensusTester[ACTYPE])
+    validateAndPrint("Single Value Consensus", PaxosTester[ACTYPE])
   }
 
   def checkExample[ACTYPE <: ComponentDefinition: TypeTag](): Boolean = {

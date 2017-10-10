@@ -156,8 +156,16 @@ object PaxosTester {
 
     val prop4 =
       Property("Termination")
-        .addValidator(SimValidator(_.getValue(LOG_STATE, classOf[HashMap[Address, ListBuffer[C_Decide]]])
-          .forall(_._2.size != 0), 109999,
+        .addValidator(SimValidator(gv =>
+          {
+            val decided = gv.getValue(LOG_STATE, classOf[HashMap[Address, ListBuffer[C_Decide]]]);
+            topology.forall(process => {
+              decided.get(process) match{
+                case Some(dec) => !dec.isEmpty;
+                case _ =>  false;
+              }
+            })
+          }, 109999,
           "Each node eventually decides",
           "The decision process might not terminate")).build();
 
