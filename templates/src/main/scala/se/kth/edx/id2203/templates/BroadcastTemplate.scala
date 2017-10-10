@@ -120,10 +120,10 @@ class WaitingCRB(init: Init[WaitingCRB]) extends ComponentDefinition {
 
       while (pending.exists(_._2.timestamp <= vec)) {
         pending.filter { case (_, data) => data.timestamp <= vec }.foreach {
-          case tpl @ (addr: Address, data: DataMessage) =>
+          case tpl @ (addr: Address, DataMessage(_,payload)) =>
             pending -= tpl;
             vec.inc(addr);
-            trigger(CRB_Deliver(addr, data.payload) -> crb)
+            trigger(CRB_Deliver(addr, payload) -> crb)
         };
       }
     }

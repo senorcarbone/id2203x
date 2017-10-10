@@ -55,7 +55,7 @@ object CRBTester {
     }
 
     crb uponEvent {
-      case x: CRB_Deliver => handle{
+      case x@CRB_Deliver(_, y: BroadcastedMessage) => handle{
         val gv = cfg.getValue[GlobalView]("simulation.globalview");
         val stateLogs = gv.getValue(LOG_STATE, classOf[HashMap[Address, ListBuffer[CRB_Deliver]]]);
         val myList = stateLogs.get(self).getOrElse(ListBuffer.empty[CRB_Deliver])
@@ -63,6 +63,15 @@ object CRBTester {
         stateLogs.put(self, myList);
         gv.setValue(LOG_STATE, stateLogs);
       }
+      case y: CRB_Deliver => handle {
+        //we received something we did not expect...we should log an incorrect value
+        val gv = cfg.getValue[GlobalView]("simulation.globalview");
+        val stateLogs = gv.getValue(LOG_STATE, classOf[HashMap[Address, ListBuffer[CRB_Deliver]]]);
+        val myList = stateLogs.get(self).getOrElse(ListBuffer.empty[CRB_Deliver])
+        myList.add(CRB_Deliver(self, BroadcastedMessage(self, Random.nextInt())))
+        stateLogs.put(self, myList);
+        gv.setValue(LOG_STATE, stateLogs);
+      } 
     }
 
     override def getInterceptedPort(): PositivePort[CausalOrderReliableBroadcast] = crb
