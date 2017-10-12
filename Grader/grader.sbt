@@ -2,7 +2,7 @@ name := "Grader"
 
 organization := "se.kthx"
 
-version := "1.0"
+version := "1.2"
 
 scalaVersion := "2.11.11"
 
@@ -24,7 +24,7 @@ libraryDependencies += "io.spray" %% "spray-can" % "1.3.3"
 libraryDependencies += "io.spray" %% "spray-routing-shapeless2" % "1.3.3"
 libraryDependencies += "io.spray" %% "spray-caching" % "1.3.3"
 libraryDependencies += "io.spray" %% "spray-client" % "1.3.3"
-libraryDependencies += "io.spray" %%  "spray-json" % "1.3.2"
+libraryDependencies += "io.spray" %%  "spray-json" % "1.3.3"
 libraryDependencies += "io.spray" %% "spray-testkit" % "1.3.3" % "test"
 libraryDependencies += "com.chuusai" %% "shapeless" % "2.1.0"
 libraryDependencies += "org.scalactic" %% "scalactic" % "3.0.0" % "test"
@@ -35,23 +35,26 @@ libraryDependencies += ("se.kth.edx" %% "kompicsteaching" % "1.0.0-SNAPSHOT").ex
 
 mainClass in assembly := Some("se.kthx.grader.Main")
 
-mergeStrategy in assembly ~= (old => 
-  {
+assemblyMergeStrategy in assembly := { 
     case PathList("com", "google", "common", xs @ _*)         => MergeStrategy.first
     case PathList("com", "typesafe", "config", xs @ _*)         => MergeStrategy.first
     case PathList("javassist", xs @ _*)				=> MergeStrategy.first
     //case PathList("org.bouncycastle", xs @ _*)		=> MergeStrategy.discard
     case "log4j.properties"							=> MergeStrategy.filterDistinctLines
     case "logback.xml"             => MergeStrategy.filterDistinctLines
-    case x => old(x)
-  }
-)
+    case x =>
+      val oldStrategy = (assemblyMergeStrategy in assembly).value
+      oldStrategy(x)
+}
 
-assemblyExcludedJars := (fullClasspath in assembly).value filter {
-        c => List(
-          "bcpg-jdk15on-1.55.jar",
-          "bcprov-jdk15on-1.55.jar"
-        ) exists {
-          c.data.getName contains _
-        }
+assemblyExcludedJars in assembly := { 
+  val cp = (fullClasspath in assembly).value
+  cp filter {
+    c => List(
+      "bcpg-jdk15on-158.jar",
+      "bcprov-jdk15on-158.jar"
+    ) exists {
+      c.data.getName contains _
     }
+  }
+}
