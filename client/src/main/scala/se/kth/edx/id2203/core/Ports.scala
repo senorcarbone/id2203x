@@ -9,7 +9,7 @@ object Ports {
   case class PL_Deliver(src: Address, payload: KompicsEvent) extends KompicsEvent;
   case class PL_Send(dest: Address, payload: KompicsEvent) extends KompicsEvent;
 
-  object PerfectLink extends Port {
+  class PerfectLink extends Port {
     indication[PL_Deliver];
     request[PL_Send];
   }

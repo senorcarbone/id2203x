@@ -91,8 +91,8 @@ object PaxosTester {
     connect[Network](network -> pLink);
     connect[Timer](timer -> interceptor);
 
-    connect(PerfectLink)(pLink -> beb);
-    connect(PerfectLink)(pLink -> consensus);
+    connect[PerfectLink](pLink -> beb);
+    connect[PerfectLink](pLink -> consensus);
     connect[BestEffortBroadcast](beb -> consensus);
     connect[Consensus](consensus -> interceptor);
   }

@@ -87,7 +87,7 @@ object RBTester {
     connect[Network](network -> pp2p);
     connect[Timer](timer -> interceptor);
 
-    connect(PerfectLink)(pp2p -> beb);
+    connect[PerfectLink](pp2p -> beb);
     connect[BestEffortBroadcast](beb -> rb);
     connect[ReliableBroadcast](rb -> interceptor);
   }

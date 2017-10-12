@@ -19,7 +19,7 @@ import scala.collection.mutable._
 class BasicBroadcast(init: Init[BasicBroadcast]) extends ComponentDefinition {
 
   //BasicBroadcast Subscriptions
-  val pLink = requires(PerfectLink);
+  val pLink = requires[PerfectLink];
   val beb = provides[BestEffortBroadcast];
 
   //BasicBroadcast Component State and Initialization

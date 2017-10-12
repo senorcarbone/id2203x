@@ -70,7 +70,7 @@ object BLETester {
     val interceptor = create(classOf[BLEInterceptor], Init[BLEInterceptor](addr));
 
     connect[Network](network -> pp2p);
-    connect(PerfectLink)(pp2p -> ble);
+    connect[PerfectLink](pp2p -> ble);
     connect[Timer](timer -> ble);
     connect(BallotLeaderElection)(ble -> interceptor);
 

@@ -72,7 +72,7 @@ object EPFDTester {
     val interceptor = create(classOf[EPFDInterceptor], Init[EPFDInterceptor](addr));
 
     connect[Network](network -> pp2p);
-    connect(PerfectLink)(pp2p -> epfd);
+    connect[PerfectLink](pp2p -> epfd);
     connect[Timer](timer -> epfd);
     connect[EventuallyPerfectFailureDetector](epfd -> interceptor);
 

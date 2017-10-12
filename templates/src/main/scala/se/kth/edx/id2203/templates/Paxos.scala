@@ -36,7 +36,7 @@ class Paxos(paxosInit: Init[Paxos]) extends ComponentDefinition {
 
   val consensus = provides[Consensus];
   val beb = requires[BestEffortBroadcast];
-  val plink = requires(PerfectLink);
+  val plink = requires[PerfectLink];
 
   //Internal State of Paxos
 

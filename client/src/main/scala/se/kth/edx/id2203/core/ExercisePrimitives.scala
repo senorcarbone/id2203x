@@ -33,7 +33,7 @@ object ExercisePrimitives {
 
   class PerfectP2PLink(pp2pInit: PerfectLinkInit) extends ComponentDefinition {
 
-    val pLink = provides(PerfectLink);
+    val pLink = provides[PerfectLink];
     val network = requires[Network];
 
     val self = pp2pInit.selfAddr;
@@ -60,7 +60,7 @@ object ExercisePrimitives {
   class FifoP2PLink(fifop2pInit: FifoLinkInit) extends ComponentDefinition {
     
     val fifoLink = provides[FIFOPerfectLink];
-    val pLink = requires(PerfectLink); 
+    val pLink = requires[PerfectLink]; 
     
     val self = fifop2pInit.self;
     val topology = fifop2pInit.topology;

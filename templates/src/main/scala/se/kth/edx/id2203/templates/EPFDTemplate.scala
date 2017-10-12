@@ -26,7 +26,7 @@ class EPFD(epfdInit: Init[EPFD]) extends ComponentDefinition {
 
   //EPFD subscriptions
   val timer = requires[Timer];
-  val pLink = requires(PerfectLink);
+  val pLink = requires[PerfectLink];
   val epfd = provides[EventuallyPerfectFailureDetector];
 
   // EPDF component state and initialization

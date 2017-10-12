@@ -157,8 +157,8 @@ object SequenceConsensusTester {
     connect[Timer](timer -> interceptor);
     connect[Timer](timer -> leaderElection)
     
-    connect(PerfectLink)(pLink -> leaderElection);
-    connect(PerfectLink)(pLink -> fifoLink);
+    connect[PerfectLink](pLink -> leaderElection);
+    connect[PerfectLink](pLink -> fifoLink);
     connect[FIFOPerfectLink](fifoLink -> seqConsensus);
 
     connect(BallotLeaderElection)(leaderElection -> interceptor);

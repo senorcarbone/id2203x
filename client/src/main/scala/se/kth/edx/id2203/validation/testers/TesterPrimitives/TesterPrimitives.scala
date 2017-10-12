@@ -38,7 +38,7 @@ object TesterPrimitives {
   
   
   class ProvidedBroadcast(init: Init[ProvidedBroadcast]) extends ComponentDefinition {
-    val pp2p = requires(PerfectLink);
+    val pp2p = requires[PerfectLink];
     val beb = provides[BestEffortBroadcast];
     val (self, topology) = init match {
       case Init(s: Address, t: Set[Address] @unchecked) => (s, t)
@@ -59,7 +59,7 @@ object TesterPrimitives {
   class ProvidedLeaderElection(init: Init[ProvidedLeaderElection]) extends ComponentDefinition {
 
     val ble = provides(BallotLeaderElection);
-    val pl = requires(PerfectLink);
+    val pl = requires[PerfectLink];
     val timer = requires[Timer];
 
     val self = init match {

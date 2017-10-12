@@ -34,7 +34,7 @@ class ReadImposeWriteConsultMajority(init: Init[ReadImposeWriteConsultMajority])
 
   val nnar = provides[AtomicRegister];
 
-  val pLink = requires(PerfectLink);
+  val pLink = requires[PerfectLink];
   val beb = requires[BestEffortBroadcast];
 
   //state and initialization

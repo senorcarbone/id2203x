@@ -42,7 +42,7 @@ class GossipLeaderElection(init: Init[GossipLeaderElection]) extends ComponentDe
   import GossipLeaderElection._
 
   val ble = provides(BallotLeaderElection);
-  val pl = requires(PerfectLink);
+  val pl = requires[PerfectLink];
   val timer = requires[Timer];
 
   val self = init match {
