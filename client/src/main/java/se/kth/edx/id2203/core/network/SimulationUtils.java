@@ -1,11 +1,10 @@
-package se.kth.edx.id2203.core.java;
+package se.kth.edx.id2203.core.network;
 
 
 import se.sics.kompics.network.Msg;
 import se.sics.kompics.simulator.network.NetworkModel;
 import se.sics.kompics.simulator.network.identifier.Identifier;
 import se.sics.kompics.simulator.network.identifier.IdentifierExtractor;
-import se.sics.kompics.simulator.network.impl.DisconnectedNodesNetworkModel;
 
 import java.util.Set;
 

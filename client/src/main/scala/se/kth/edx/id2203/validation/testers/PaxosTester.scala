@@ -7,7 +7,7 @@ import se.kth.edx.id2203.core.ExercisePrimitives.PerfectP2PLink
 import se.kth.edx.id2203.core.ExercisePrimitives.PerfectP2PLink._
 import se.kth.edx.id2203.core.Ports._
 import se.kth.edx.id2203.core.SimulationPrimitives.{ProxyInterceptor, ProxyInterceptorInit, ScheduleTriggers}
-import se.kth.edx.id2203.core.java.SimulationUtils
+import se.kth.edx.id2203.core.network.SimulationUtils
 import se.kth.edx.id2203.core.{TAddress, THeader}
 import se.kth.edx.id2203.validation.ValidationUtils
 import se.kth.edx.id2203.validation.ValidationUtils.{Property, SimValidator, ValidationGroup, ValidationSimulation}
