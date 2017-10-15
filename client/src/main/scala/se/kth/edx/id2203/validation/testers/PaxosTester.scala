@@ -7,11 +7,16 @@ import se.kth.edx.id2203.core.ExercisePrimitives.PerfectP2PLink
 import se.kth.edx.id2203.core.ExercisePrimitives.PerfectP2PLink._
 import se.kth.edx.id2203.core.Ports._
 import se.kth.edx.id2203.core.SimulationPrimitives.{ProxyInterceptor, ProxyInterceptorInit, ScheduleTriggers}
+import se.kth.edx.id2203.core.java.SimulationUtils
+import se.kth.edx.id2203.core.{TAddress, THeader}
 import se.kth.edx.id2203.validation.ValidationUtils
 import se.kth.edx.id2203.validation.ValidationUtils.{Property, SimValidator, ValidationGroup, ValidationSimulation}
 import se.kth.edx.id2203.validation.testers.TesterPrimitives.TesterPrimitives._
-import se.sics.kompics.network.{Address, Network}
+import se.sics.kompics.network.{Address, Header, Msg, Network}
 import se.sics.kompics.simulator.SimulationScenario
+import se.sics.kompics.simulator.network.{NetworkModel, PartitionMapper}
+import se.sics.kompics.simulator.network.identifier.{Identifier, IdentifierExtractor}
+import se.sics.kompics.simulator.network.identifier.impl.{SocketId, SocketIdExtractor}
 import se.sics.kompics.simulator.network.impl.NetworkModels
 import se.sics.kompics.simulator.util.GlobalView
 import se.sics.kompics.sl.simulator._
@@ -19,12 +24,13 @@ import se.sics.kompics.sl.{ComponentDefinition, Init, _}
 import se.sics.kompics.timer.Timer
 import se.sics.kompics.{KompicsEvent, Start}
 
+import scala.language.existentials
 import scala.collection.JavaConversions._
 import scala.collection.mutable._
 import collection.immutable.Set
 import collection.mutable.ListBuffer
 import scala.collection.mutable
-import scala.concurrent.duration._
+import scala.concurrent.duration.{DurationInt, _}
 import scala.reflect.runtime.universe._
 import scala.util.Random
 
@@ -33,8 +39,8 @@ object PaxosTester {
   val LOG_STATE: String = "simulation.delivered"
 
   def apply[CTYPE <: ComponentDefinition: TypeTag](): collection.Iterable[ValidationGroup] = {
-    SimulationScenario.setSeed(94305)
-    ValidationSimulation.runAndValidate(ConsensusValidation[CTYPE](5, 3, 20l, 25l, 1).scenario);
+    SimulationScenario.setSeed(43234)
+    ValidationSimulation.runAndValidate(ConsensusValidation[CTYPE](4, 4, 20l, 80l, 1).scenario);
   }
 
   class InterceptorPayload(id: Int) extends KompicsEvent with Serializable;
@@ -114,7 +120,38 @@ object PaxosTester {
 
     import Distributions._
 
-    assert(numNodes > numProposers);
+    assert(numNodes >= numProposers);
+
+    class MapAddresses(partition: Set[Identifier]) extends PartitionMapper[Identifier]{
+      override def getPartition(nodeId: Identifier): Int = if(partition.contains(nodeId)) 0 else 1;
+    }
+    
+// curious to find out why this does not work...
+//    
+//    val splNet = (extr: IdentifierExtractor, modelIn:NetworkModel, modelOut:NetworkModel, partition: Set[Identifier]) => new NetworkModel{
+//       override def getLatencyMs(message : Msg[_ <: Address, _ <: Header[_<:Address]]): Long = {
+//        
+//        val srcId = extr.extract(message.getHeader.asInstanceOf[THeader].getSource)
+//        val dstId = extr.extract(message.getHeader.asInstanceOf[THeader].getDestination)
+//
+//        val srcPartition =  if(partition.contains(srcId)) 0 else 1;
+//        val destPartition = if(partition.contains(dstId)) 0 else 1;
+//        if (srcPartition == destPartition)
+//          modelIn.getLatencyMs(message.asInstanceOf[Msg[ADR, HDR] forSome {type ADR <: Address; type HDR <: Header[ADR]}])
+//        else
+//          modelOut.getLatencyMs(message.asInstanceOf[Msg[ADR, HDR] forSome {type ADR <: Address; type HDR <: Header[ADR]}])
+//      }
+//
+//    }
+
+// new MapAddresses(topology.slice((topology.size/2)-1,topology.size).map(x => new SocketIdExtractor().extract(x)).toSet[Identifier])
+    
+    val splitNetwork = () => Op((_: Unit) => ChangeNetwork(
+       SimulationUtils.newDisconnectedModel(new SocketIdExtractor(),
+        NetworkModels.withUniformRandomDelay(latencyMin, latencyMax, SimulationScenario.getRandom),
+        NetworkModels.withConstantDelay(100*latencyMax),
+        topology.slice(((topology.size+1)/2),topology.size).map(x => new SocketIdExtractor().extract(x)).toSet[Identifier])
+    ));
 
     //this is a true random (not using the simulator seed) to ensure uniqueness across validations
     val instantRandom = new Random();
@@ -173,11 +210,21 @@ object PaxosTester {
           "Each node eventually decides",
           "The decision process might not terminate")).build();
 
+
     val scenario =
       ValidationSimulation(prop1, prop2, prop3, prop4) inParallel (
-        raise(1, setupOp).arrival(Distributions.constant(0l)), raise(1, setUniformLatencyNetwork(),
-          constant(latencyMin), constant(latencyMax)).arrival(constant(0)),
-          raise(numNodes, startPaxos, 1.toN).arrival(constant(0l))) andThen 1000000.millis afterTermination Terminate;
+        raise(1, setupOp).arrival(Distributions.constant(0l)),
+        raise(1, splitNetwork()).arrival(constant(0))) andThen 1.milliseconds afterTermination
+        raise(numNodes, startPaxos, 1.toN).arrival(constant(0l)) andThen 5.seconds afterTermination //let propose pass
+        raise(1, setUniformLatencyNetwork(), constant(latencyMin), constant(latencyMax)).arrival(constant(0)) andThen 1000000.millis afterTermination Terminate;
+        //now we should get a majority
+        
+    
+//    val scenario =
+//      ValidationSimulation(prop1, prop2, prop3, prop4) inParallel (
+//        raise(1, setupOp).arrival(Distributions.constant(0l)), raise(1, setUniformLatencyNetwork(),
+//          constant(latencyMin), constant(latencyMax)).arrival(constant(0)),
+//          raise(numNodes, startPaxos, 1.toN).arrival(constant(0l))) andThen 1000000.millis afterTermination Terminate;
   }
 
 }
