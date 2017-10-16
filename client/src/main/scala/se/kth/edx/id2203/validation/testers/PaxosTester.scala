@@ -40,7 +40,7 @@ object PaxosTester {
 
   def apply[CTYPE <: ComponentDefinition: TypeTag](): collection.Iterable[ValidationGroup] = {
     SimulationScenario.setSeed(43234)
-    ValidationSimulation.runAndValidate(ConsensusValidation[CTYPE](4, 4, 20l, 80l, 1).scenario);
+    ValidationSimulation.runAndValidate(ConsensusValidation[CTYPE](4, 3, 30l, 80l, 1).scenario);
   }
 
   class InterceptorPayload(id: Int) extends KompicsEvent with Serializable;
@@ -214,7 +214,7 @@ object PaxosTester {
     val scenario =
       ValidationSimulation(prop1, prop2, prop3, prop4) inParallel (
         raise(1, setupOp).arrival(Distributions.constant(0l)),
-        raise(1, splitNetwork()).arrival(constant(0))) andThen 1.milliseconds afterTermination
+        raise(1, splitNetwork()).arrival(constant(0))) andThen 10.milliseconds afterTermination
         raise(numNodes, startPaxos, 1.toN).arrival(constant(0l)) andThen 5.seconds afterTermination //let propose pass
         raise(1, setUniformLatencyNetwork(), constant(latencyMin), constant(latencyMax)).arrival(constant(0)) andThen 1000000.millis afterTermination Terminate;
         //now we should get a majority
