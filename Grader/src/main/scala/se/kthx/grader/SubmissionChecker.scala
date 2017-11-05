@@ -119,11 +119,14 @@ class SubmissionChecker(val xfilemanager: ActorRef, val grader: ActorRef) extend
   }
 
   private[grader] def extractTokens(data: String): Seq[TokenPar] = {
-    val jso = try {
-      data.parseJson.asJsObject
-    } catch {
-      case _: JsonParser.ParsingException => data.substring(1).parseJson.asJsObject // workaround for a weird zeppelin bug with hidden chars
-    }
+    val firstBrace = data.indexOf('{');
+    val lastBrace = data.lastIndexOf('}');
+    //    if ((firstBrace < 0) || (lastBrace < 0)) {
+    //      log.warning(s"JSON content was not found {=$firstBrace and }=$lastBrace");
+    //      return Seq.empty;
+    //    }
+    val jsonString = data.substring(firstBrace, lastBrace + 1);
+    val jso = jsonString.parseJson.asJsObject;
     jso.fields("paragraphs") match {
       case JsArray(els) => {
         val pars = els flatMap {

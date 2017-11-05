@@ -42,6 +42,10 @@ class SubmissionTest extends TestKit(ActorSystem("testSystem")) with FlatSpecLik
     tokens shouldBe empty;
   }
 
+  it should "deal with empty submissions" in {
+    an[StringIndexOutOfBoundsException] should be thrownBy sc.extractTokens("# useless stuff");
+  }
+
   it should "find tokens" in {
     val tokens = sc.extractTokens(hwFile);
     tokens should not be empty;
