@@ -2,7 +2,7 @@ name := "Grader"
 
 organization := "se.kthx"
 
-version := "1.3"
+version := "1.4"
 
 scalaVersion := "2.11.11"
 

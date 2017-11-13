@@ -25,15 +25,27 @@ class SubmissionTest extends TestKit(ActorSystem("testSystem")) with FlatSpecLik
     jdata shouldBe a[JsObject]
   }
 
-  ignore should "deal with formatted json" in {
-    val hwFileS2 = Thread.currentThread().getContextClassLoader.getResourceAsStream("testhw2.json");
+  it should "deal with formatted json" in {
+    val hwFileS2 = Thread.currentThread().getContextClassLoader.getResourceAsStream("Exercise_Broadcast_Abstractions.json");
     val hwFile2 = scala.io.Source.fromInputStream(hwFileS2).mkString;
-    val input = """{"test": "lala"}""";
-    val diff = hwFile2.diff(input);
-    println(s"Difference between '${input}' and '${hwFile2}':\n'${diff}' of length ${diff.length()} as byte ${diff.charAt(0).toInt}");
-    val jdata = hwFile2.substring(1).parseJson.asJsObject
-    jdata should not be null
-    jdata shouldBe a[JsObject]
+    //val input = """{"test": "lala"}""";
+    //val diff = hwFile2.diff(input);
+    //println(s"Difference between '${input}' and '${hwFile2}':\n'${diff}' of length ${diff.length()} as byte ${diff.charAt(0).toInt}");
+    //val jdata = hwFile2.substring(1).parseJson.asJsObject
+    //jdata should not be null
+    //jdata shouldBe a[JsObject]
+    val data = hwFile2;
+    val firstBrace = data.indexOf('{');
+    val lastBrace = data.lastIndexOf('}');
+    //    if ((firstBrace < 0) || (lastBrace < 0)) {
+    //      log.warning(s"JSON content was not found {=$firstBrace and }=$lastBrace");
+    //      return Seq.empty;
+    //    }
+    val jsonString = data.substring(firstBrace, lastBrace + 1);
+    val jso = jsonString.parseJson.asJsObject;
+    jso should not be (null);
+
+    val tokens = sc.extractTokens(data);
   }
 
   "SubmissionChecker" should "deal with failed submissions" in {

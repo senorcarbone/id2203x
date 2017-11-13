@@ -132,7 +132,19 @@ class SubmissionChecker(val xfilemanager: ActorRef, val grader: ActorRef) extend
         val pars = els flatMap {
           case paragraph: JsObject => {
             val title = paragraph.fields.getOrElse("title", JsString("Untitled")).convertTo[String];
-            val results = paragraph.fields.getOrElse("results", JsObject.empty).asJsObject;
+            val resultsF = paragraph.fields.getOrElse("results", JsObject.empty); //.asJsObject;
+            val results = try {
+              resultsF.asJsObject
+            } catch {
+              case _: DeserializationException => {
+                log.warning("Invalid result object: {}", resultsF);
+                JsObject.empty
+              }
+              case e: Throwable => {
+                log.warning("Unexpected exception for result: {}", resultsF);
+                throw e;
+              }
+            };
             results.fields.get("msg") match {
               case Some(JsArray(resultList)) => resultList flatMap {
                 case result: JsObject => {
