@@ -1,19 +1,18 @@
 package se.kth.edx.id2203.validation.testers
 
-import se.kth.edx.id2203.core.ExercisePrimitives.AddressUtils._
 import se.kth.edx.id2203.core.ExercisePrimitives.PerfectP2PLink.PerfectLinkInit
 import se.kth.edx.id2203.core.ExercisePrimitives.{AddressUtils, PerfectP2PLink}
 import se.kth.edx.id2203.core.Ports._
 import se.kth.edx.id2203.validation.ValidationUtils.{Property, SimValidator, ValidationGroup, ValidationSimulation}
 import se.sics.kompics.network.{Address, Network}
+import se.sics.kompics.simulator.SimulationScenario
 import se.sics.kompics.simulator.network.identifier.Identifier
 import se.sics.kompics.simulator.network.identifier.impl.SocketIdExtractor
 import se.sics.kompics.simulator.network.impl.NetworkModels
 import se.sics.kompics.simulator.network.impl.NetworkModels._
 import se.sics.kompics.simulator.util.GlobalView
-import se.sics.kompics.simulator.SimulationScenario
-import se.sics.kompics.sl.{ComponentDefinition, Init, _}
 import se.sics.kompics.sl.simulator.{Op, StartNode, _}
+import se.sics.kompics.sl.{ComponentDefinition, Init, _}
 import se.sics.kompics.timer.Timer
 
 import scala.collection.JavaConversions._
@@ -31,7 +30,7 @@ object BLETester {
   def apply[C <: ComponentDefinition : TypeTag](): collection.Iterable[ValidationGroup] = {
     val seed = 123;
     SimulationScenario.setSeed(seed);
-    ValidationSimulation.runAndValidate(BLEValidation(asJavaClass[C](typeOf[C]), 15, 3, 100l,   50, 200).scenario);
+    ValidationSimulation.runAndValidate(BLEValidation(asJavaClass[C](typeOf[C]), 15, 3, 100l, 50, 200).scenario);
   }
 
 
@@ -93,10 +92,10 @@ object BLETester {
     assert(discNodes < numNodes)
 
     val topology = (1 to numNodes).map(AddressUtils.toAddress(_)).toList;
-//    val deathOrder = getUniqueKillTargets(discNodes, numNodes);
+    //    val deathOrder = getUniqueKillTargets(discNodes, numNodes);
     val sorted = topology.map(x => (x, x.hashCode())).sortBy(_._2).map(_._1);
     val failed = sorted.takeRight(discNodes)
-    val correct = sorted.take(numNodes-discNodes)
+    val correct = sorted.take(numNodes - discNodes)
 
     def getUniqueKillTargets(size: Int, max: Int): Array[Integer] = {
       val extRand = new Random();
@@ -107,53 +106,65 @@ object BLETester {
       }
       myUniqueSet.toArray;
     }
-    
+
 
     def validateCompleteness(gv: GlobalView): Boolean = {
       val globalState = gv.getValue(BLETester.GLOBAL_STATE, classOf[mutable.HashMap[Address, ListBuffer[BLE_Leader]]]);
-      correct.forall(z => {
-        val leaders = globalState.get(z);
 
-        if (!leaders.isEmpty) 
-        {
-          //check that the last reported leader is elected by a majority (or all...) of processes
-          val elected = correct.map(z => globalState.get(z).get.last.leader).toSet
-          if (elected.size != 1) {
-            return false;
-          }
-          if(!correct.contains(elected.head)){
-            return false;
-          }
+      correct.forall(z => {
+        val elected = globalState.get(z);
+        elected match {
+          case Some(elections) => correct.contains(elections.last.leader)
+          case None => false
         }
-        
-        return true;
       });
     }
-    
+
+    def validateAgreement(gv: GlobalView): Boolean = {
+      val globalState = gv.getValue(BLETester.GLOBAL_STATE, classOf[mutable.HashMap[Address, ListBuffer[BLE_Leader]]]);
+
+      //check that the last reported leader is elected by all correcxt processes
+      val elected = correct.filter(p => globalState.get(p).isDefined).map(z => globalState.get(z).get.last.leader).toSet
+      if (elected.size != 1) {
+        return false;
+      }
+      //also make sure that leader is correct
+      if (!correct.contains(elected.head)) {
+        return false;
+      }
+      return true;
+    }
+
     def validateMonotonicity(gv: GlobalView): Boolean = {
       val globalState = gv.getValue(BLETester.GLOBAL_STATE, classOf[mutable.HashMap[Address, ListBuffer[BLE_Leader]]]);
-      
-      correct.forall(z => {
-        globalState.get(z).get.foldLeft((0, true):(Long, Boolean))((b, next) => {
+
+      correct.filter(p => globalState.get(p).isDefined).forall(z => {
+        globalState.get(z).get.foldLeft((0, true): (Long, Boolean))((b, next) => {
           b match {
             case (prev, false) => b;
             case (prev, true) =>
-              if(prev < next.ballot) (next.ballot, true) else (next.ballot, false);
+              if (prev < next.ballot) (next.ballot, true) else (next.ballot, false);
           }
         })._2
       })
     }
 
-    val prop1: ValidationGroup = Property("Eventual Correctness")
+    val prop1: ValidationGroup = Property("Completeness")
       .addValidator(SimValidator(gv =>
         validateCompleteness(gv), 100000l,
-        "Eventually a correct process should be considered a leader by a majority of processes",
-        "There is no correct process that is eventually considered a leader by a majority of processes")).build()
+        "Eventually every correct process elects some correct process as long as a majority is correct",
+        "There is at least one correct process which does not elect any correct process given a correct majority of processes")).build()
 
-    val prop2: ValidationGroup = Property("Ballot Monotonicity")
+    val prop2: ValidationGroup = Property("Eventual Agreement")
+      .addValidator(SimValidator(gv =>
+        validateAgreement(gv), 100000l,
+        "Eventually no two correct processes elect different correct processes",
+        "Different processes are eventually elected by at least two correct processes")).build()
+
+    val prop3: ValidationGroup = Property("Monotonic Unique Ballots")
       .addValidator(SimValidator(gv => validateMonotonicity(gv), 100000l,
-        "Every new leader election should yield a monotonically increasing ballot number",
-        "The ballot number is not monotonically increasing among consecutive leader elections")).build();
+        "Ballot numbers of consecutively elected processes should be unique and monotonically increasing",
+        "Monotonicity or uniqueness are violated for consecutively elected processes")).build();
 
     //Simulation Operations ----
     val setupOp = Op((_: Unit) => Setup((gv: GlobalView) => gv.setValue(BLETester.GLOBAL_STATE, mutable.HashMap.empty[Address, ListBuffer[BLE_Leader]])).build());
@@ -172,12 +183,12 @@ object BLETester {
     val killOP = Op { (self: Integer) => KillNode(sorted(self.toInt)) }
 
     val scenario =
-      ValidationSimulation(prop1, prop2) inParallel(
+      ValidationSimulation(prop1, prop2, prop3) inParallel(
         raise(1, setupOp).arrival(Distributions.constant(0)), raise(1, setUniformDelay(), constant(maxLinkDelay)).arrival(constant(0)),
         raise(numNodes, startBLEs, 1.toN).arrival(constant(0))) andThen 10000.millis afterTermination
         raise(1, delayOp).arrival(constant(0)) andThen 500.millis afterTermination
         raise(1, setUniformDelay(), constant(0)).arrival(constant(0)) andThen 10000.millis afterTermination
-        raise(discNodes, killOP, Distributions.intSeq(((numNodes-discNodes) until numNodes))).arrival(constant(0)) andThen 10000000l.millis afterTermination Terminate;
+        raise(discNodes, killOP, Distributions.intSeq(((numNodes - discNodes) until numNodes))).arrival(constant(0)) andThen 10000000l.millis afterTermination Terminate;
   }
 
 }

@@ -143,6 +143,6 @@ class GossipLeaderElection(init: Init[GossipLeaderElection]) extends ComponentDe
 }
 
 object BLETemplate extends App {
-  checkBLE[GossipLeaderElection];
+  checkBallotLE[GossipLeaderElection];
 }
 

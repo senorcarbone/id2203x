@@ -101,7 +101,7 @@ package object validation {
     validateAndPrint("Sequence Consensus", SequenceConsensusTester[SCTYPE]())
   }
   
-  def checkBLE[BLETYPE <: ComponentDefinition: TypeTag](): Boolean = {
+  def checkBallotLE[BLETYPE <: ComponentDefinition: TypeTag](): Boolean = {
     outToFile();
     validateAndPrint("Ballot Leader Election", BLETester[BLETYPE]())
   }
