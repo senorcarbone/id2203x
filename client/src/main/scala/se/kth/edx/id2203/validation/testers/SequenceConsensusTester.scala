@@ -51,7 +51,7 @@ object SequenceConsensusTester {
   class SeqConsensusInterceptor(init: Init[SeqConsensusInterceptor]) extends ProxyInterceptor[SequenceConsensus] {
 
     val seqconsensus = requires[SequenceConsensus];
-    val leadelection = requires(BallotLeaderElection);
+    val leadelection = requires[BallotLeaderElection];
     val pp2p = requires[PerfectLink];
     var isLeader = false;
     val r = Random;
@@ -165,8 +165,8 @@ object SequenceConsensusTester {
     connect[PerfectLink](pLink -> leaderElection);
     connect[FIFOPerfectLink](fifoLink -> seqConsensus);
 
-    connect(BallotLeaderElection)(leaderElection -> interceptor);
-    connect(BallotLeaderElection)(leaderElection -> seqConsensus);
+    connect[BallotLeaderElection](leaderElection -> interceptor);
+    connect[BallotLeaderElection](leaderElection -> seqConsensus);
     connect[SequenceConsensus](seqConsensus -> interceptor);
   }
 
@@ -260,7 +260,7 @@ object SequenceConsensusTester {
     val prop2 =
       Property("Uniform Agreement")
         .addValidator(SimValidator( checkAggreement, 500000,
-          "For every two sequences decided across different processs, one is a prefix of the other",
+          "For every two sequences decided across different processes, one is a prefix of the other",
           "There exist at least one decided sequence which is not a prefix of another")).build();
 
 //    val prop3 =
@@ -273,7 +273,7 @@ object SequenceConsensusTester {
       Property("Termination")
         .addValidator(SimValidator(checkCompleteness, 500000,
           "Every command proposed by a correct process is eventually included in a decided sequence by every correct process",
-          "There exist at least one command proposed by a correct process which did not get included in a process' decided sequence")).build();
+          "There exist commands proposed by a correct process which did not get included in a process' decided sequence")).build();
     
     val scenario =
       ValidationSimulation(prop1, prop2, prop4) inParallel(

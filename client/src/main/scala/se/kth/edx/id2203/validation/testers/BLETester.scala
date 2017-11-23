@@ -36,7 +36,7 @@ object BLETester {
 
   class BLEInterceptor(init: Init[BLEInterceptor]) extends ComponentDefinition {
 
-    val ble = requires(BallotLeaderElection);
+    val ble = requires[BallotLeaderElection];
 
     val self = init match {
       case Init(s: Address) => s
@@ -71,7 +71,7 @@ object BLETester {
     connect[Network](network -> pp2p);
     connect[PerfectLink](pp2p -> ble);
     connect[Timer](timer -> ble);
-    connect(BallotLeaderElection)(ble -> interceptor);
+    connect[BallotLeaderElection](ble -> interceptor);
 
   }
 

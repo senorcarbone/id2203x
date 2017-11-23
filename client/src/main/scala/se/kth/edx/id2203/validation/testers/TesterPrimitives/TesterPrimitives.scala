@@ -59,7 +59,7 @@ object TesterPrimitives {
 
   class ProvidedLeaderElection(init: Init[ProvidedLeaderElection]) extends ComponentDefinition {
 
-    val ble = provides(BallotLeaderElection);
+    val ble = provides[BallotLeaderElection];
     val pl = requires[PerfectLink];
     val timer = requires[Timer];
 

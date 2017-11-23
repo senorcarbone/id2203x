@@ -73,7 +73,7 @@ object Ports {
 
   case class BLE_Leader(leader: Address, ballot: Long) extends KompicsEvent;
 
-  object BallotLeaderElection extends Port {
+  class BallotLeaderElection extends Port {
     indication[BLE_Leader];
   }
 

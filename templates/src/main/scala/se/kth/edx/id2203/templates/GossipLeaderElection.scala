@@ -1,11 +1,12 @@
 package se.kth.edx.id2203.templates
 
+import se.kth.edx.id2203.core.ExercisePrimitives.AddressUtils
 import se.kth.edx.id2203.core.Ports._
-import se.kth.edx.id2203.validation.checkBLE
+import se.kth.edx.id2203.validation.checkBallotLE
 import se.sics.kompics.network._
 import se.sics.kompics.sl._
-import se.sics.kompics.timer.{ ScheduleTimeout, Timeout, Timer }
-import se.sics.kompics.{ KompicsEvent, Start }
+import se.sics.kompics.timer.{ScheduleTimeout, Timeout, Timer}
+import se.sics.kompics.{KompicsEvent, Start}
 
 import scala.collection.mutable;
 
@@ -41,7 +42,7 @@ class GossipLeaderElection(init: Init[GossipLeaderElection]) extends ComponentDe
 
   import GossipLeaderElection._
 
-  val ble = provides(BallotLeaderElection);
+  val ble = provides[BallotLeaderElection];
   val pl = requires[PerfectLink];
   val timer = requires[Timer];
 

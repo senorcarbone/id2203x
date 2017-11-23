@@ -1,5 +1,6 @@
 package se.kth.edx.id2203.templates
 
+import se.kth.edx.id2203.core.ExercisePrimitives.AddressUtils
 import se.sics.kompics.sl._
 import se.sics.kompics.network._
 import se.kth.edx.id2203.core.Ports.{SequenceConsensus, _}
@@ -33,7 +34,7 @@ class SequencePaxos(init: Init[SequencePaxos]) extends ComponentDefinition {
   import Role._
 
   val sc = provides[SequenceConsensus];
-  val ble = requires(BallotLeaderElection);
+  val ble = requires[BallotLeaderElection];
   val pl = requires[FIFOPerfectLink];
 
   val (self, pi, others) = init match {
@@ -85,7 +86,7 @@ class SequencePaxos(init: Init[SequencePaxos]) extends ComponentDefinition {
           state = (FOLLOWER, state._2);
         }
       } else {
-        logger.debug("Leader {} with ballot {} is already outdated!", l, n);
+//        logger.debug("Leader {} with ballot {} is already outdated!", l, n);
       }
     }
   }
@@ -98,7 +99,7 @@ class SequencePaxos(init: Init[SequencePaxos]) extends ComponentDefinition {
         val sfx = if (na >= n) suffix(va, ldp) else List.empty;
         trigger (PL_Send(p, Promise(np, na, sfx, ld)) -> pl);
       } else {
-        logger.debug("Outdated ({} >= {}) Prepare received from {}", Array(nProm, np, p));
+//        logger.debug("Outdated ({} >= {}) Prepare received from {}", Array(nProm, np, p));
       }
     }
     case PL_Deliver(a, Promise(n, na, sfxa, lda)) => handle {
@@ -167,9 +168,10 @@ class SequencePaxos(init: Init[SequencePaxos]) extends ComponentDefinition {
     case SC_Propose(c) => handle {
       if (state == (LEADER, PREPARE)) {
         propCmds = propCmds ++ List(c);
-      } else if (state == (LEADER, ACCEPT)) {
+      } 
+      else if (state == (LEADER, ACCEPT)) {
         va = va ++ List(c);
-        las += (self -> (las(self) + 1));
+        las += (self -> va.size);
         lds.keySet.foreach { p =>
           if (p != self) {
             trigger (PL_Send(p, Accept(nL, c)) -> pl);
@@ -183,5 +185,5 @@ class SequencePaxos(init: Init[SequencePaxos]) extends ComponentDefinition {
 
 
 object SeqConsensus extends App {
-  checkSequenceConsensus[SequencePaxos]();
+  checkSeqConsensus[SequencePaxos]();
 }
