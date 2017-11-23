@@ -96,7 +96,7 @@ package object validation {
     }
   }
 
-  def checkSequenceConsensus[SCTYPE <: ComponentDefinition: TypeTag](): Boolean = {
+  def checkSeqConsensus[SCTYPE <: ComponentDefinition: TypeTag](): Boolean = {
     outToFile();
     validateAndPrint("Sequence Consensus", SequenceConsensusTester[SCTYPE]())
   }

@@ -1,5 +1,6 @@
 package se.kth.edx.id2203.validation.testers.TesterPrimitives
 
+import se.kth.edx.id2203.core.ExercisePrimitives.AddressUtils
 import se.kth.edx.id2203.core.Ports._
 import se.sics.kompics.{KompicsEvent, Start}
 import se.sics.kompics.network.Address
@@ -53,7 +54,7 @@ object TesterPrimitives {
         trigger(BEB_Deliver(src, payload) -> beb);
       }
     }
-  }
+   }                
   
 
   class ProvidedLeaderElection(init: Init[ProvidedLeaderElection]) extends ComponentDefinition {
@@ -121,6 +122,7 @@ object TesterPrimitives {
     ctrl uponEvent {
       case _: Start => handle {
         startTimer(period);
+        println(s" ${System.currentTimeMillis()} :: ${AddressUtils.toRank(self)}-${self.hashCode()} started BLE");
       }
     }
 
@@ -150,6 +152,10 @@ object TesterPrimitives {
         if (r == round) {
           ballots += (src -> b)
         } else {
+          if(r > round){
+            val failHereDamnit = true;
+          }
+//          println(s" ${System.currentTimeMillis()} :: ${AddressUtils.toRank(self)} received HB for ${r} in ${round}");
           period += delta;
           //        if (b > highestBallot) {
           //          highestBallot = b;

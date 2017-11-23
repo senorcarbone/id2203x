@@ -46,34 +46,38 @@ object SequenceConsensusTester {
 
   // - Program interfaces for Simulation
 
-  case class BroadcastedMessage(src: Address, seq: Int) extends InterceptorPayload(seq);
 
   case class ProposalTimeout(timeout: ScheduleTimeout) extends Timeout(timeout)
+  
+  case class ProposedCommand(cmd: RSM_SimCmd) extends KompicsEvent;
   
   class SeqConsensusInterceptor(init: Init[SeqConsensusInterceptor]) extends ProxyInterceptor[SequenceConsensus] {
 
     val seqconsensus = requires[SequenceConsensus];
     val leadelection = requires(BallotLeaderElection);
+    val pp2p = requires[PerfectLink];
     var isLeader = false;
     val r = Random;
     val propRate =  cfg.getValue[Long]("sc.simulation.rate");
     val maxProposals = cfg.getValue[Int]("sc.simulation.maxProposals"); 
     var numProposals = 0;
 
-    def storeNext(nextCmd: RSM_SimCmd) {
+    def storeAndBroadcast(nextCmd: RSM_SimCmd) {
       val gv = cfg.getValue[GlobalView](LOG_GLOBAL);
       val proposed = gv.getValue(LOG_PROPOSED, classOf[scala.collection.mutable.Set[RSM_SimCmd]]);
       proposed.add(nextCmd);
+      topology.foreach(p => trigger(PL_Send(p, ProposedCommand(nextCmd)) -> pp2p));
     }
     
     def scheduleProposal(): Unit = {
       val timeout = new ScheduleTimeout(propRate);
       timeout.setTimeoutEvent(ProposalTimeout(timeout));
+      numProposals = numProposals + 1;
       trigger(timeout -> timer);
     }
     
-    val (self, pInit) = init match {
-      case Init(s: Address, proxyInit: ProxyInterceptorInit) => (s, proxyInit)
+    val (self, pInit, topology) = init match {
+      case Init(s: Address, proxyInit: ProxyInterceptorInit, topol: Set[Address] @unchecked) => (s, proxyInit, topol)
     }
 
     ctrl uponEvent {
@@ -81,15 +85,20 @@ object SequenceConsensusTester {
         initialize(pInit);
       }
     }
+    
+    pp2p uponEvent {
+      case  PL_Deliver(_, ProposedCommand(nextCommand)) => handle {
+        if(isLeader)
+        trigger(SC_Propose(nextCommand) -> seqconsensus);
+      }
+    }
 
     timer uponEvent {
       case ProposalTimeout(_) => handle {
         if(isLeader && numProposals <= maxProposals){
           val nextCmd = RSM_SimCmd(r.nextLong());
-          storeNext(nextCmd);
-          println(s" ${System.currentTimeMillis()} :: ${AddressUtils.toRank(self)} proposing ${nextCmd.id.toByte}. This is its $numProposals proposal as a leader");
-          trigger(SC_Propose(nextCmd) -> seqconsensus);
-          numProposals = numProposals + 1;
+          storeAndBroadcast(nextCmd);
+          println(s" ${System.currentTimeMillis()} :: ${AddressUtils.toRank(self)} proposing ${nextCmd.id.toByte}.");
           scheduleProposal();
         }
         else
@@ -108,7 +117,6 @@ object SequenceConsensusTester {
         
         if(newLeader == self && !isLeader){
           scheduleProposal();
-          numProposals = numProposals + 1;
         }
         
         isLeader = (newLeader == self); 
@@ -151,14 +159,15 @@ object SequenceConsensusTester {
     
     val leaderElection = create(classOf[ProvidedLeaderElection], Init[ProvidedLeaderElection](selfAddr))
     val seqConsensus = create(paxosClass, Init[ComponentDefinition](selfAddr, topology));
-    val interceptor = create(classOf[SeqConsensusInterceptor], Init[SeqConsensusInterceptor](selfAddr, proxyInit));
+    val interceptor = create(classOf[SeqConsensusInterceptor], Init[SeqConsensusInterceptor](selfAddr, proxyInit, topology));
 
     connect[Network](network -> pLink);
     connect[Timer](timer -> interceptor);
     connect[Timer](timer -> leaderElection)
     
-    connect[PerfectLink](pLink -> leaderElection);
+    connect[PerfectLink](pLink -> interceptor)
     connect[PerfectLink](pLink -> fifoLink);
+    connect[PerfectLink](pLink -> leaderElection);
     connect[FIFOPerfectLink](fifoLink -> seqConsensus);
 
     connect(BallotLeaderElection)(leaderElection -> interceptor);
@@ -232,37 +241,52 @@ object SequenceConsensusTester {
     
     def checkAggreement(view: GlobalView) : Boolean ={
       val decided = view.getValue(LOG_DECIDED, classOf[mutable.HashMap[Address, ListBuffer[RSM_SimCmd]]])
-      val maxTpl = decided.maxBy(_._2.size);
-      decided.forall { x => x._2.toList == maxTpl._2.subList(0, x._2.size).toList};
+      if(!decided.isEmpty){
+        val maxTpl = decided.maxBy(_._2.size);
+        return decided.forall { x => x._2.toList == maxTpl._2.subList(0, x._2.size).toList};  
+      }
+      return true;
+    }
+
+    def checkCompleteness(view: GlobalView) : Boolean ={
+      val proposed = view.getValue(LOG_PROPOSED, classOf[scala.collection.mutable.Set[RSM_SimCmd]]);
+      val decided = view.getValue(LOG_DECIDED, classOf[mutable.HashMap[Address, ListBuffer[RSM_SimCmd]]])
+      
+      return correct.forall(p => decided.get(p).isDefined) &&
+      correct.forall(p => !decided.get(p).isEmpty)
     }
     
     val prop1 =
       Property("Validity")
         .addValidator(SimValidator(checkValidity, 500000,
-          "Every value decided has been previously proposed",
-          "There exist values decided that were not previously proposed")).build();
+          "Every value decided in a sequence has been previously proposed",
+          "There exist values decided in a sequence that were not previously proposed")).build();
 
     val prop2 =
       Property("Uniform Agreement")
         .addValidator(SimValidator( checkAggreement, 500000,
-          "There were no two processes deciding different sequences",
-          "Decided value sequences do not match across different processes")).build();
-    
-    val prop3 =
+          "For every two sequences decided across different processs, one is a prefix of the other",
+          "There exist at least one decided sequence which is not a prefix of another")).build();
+
+//    val prop3 =
+//      Property("Integrity")
+//        .addValidator(SimValidator( checkIntegrity, 500000,
+//          "Every decided sequence is a strict prefix of next decided sequence by a process",
+//          "Not every decided sequence is a strict prefix of the next decided sequence by a process")).build();
+//    
+    val prop4 =
       Property("Termination")
-        .addValidator(SimValidator(_.getValue(LOG_DECIDED, classOf[HashMap[Address, ListBuffer[C_Decide]]])
-          .forall(_._2.size != 0), 500000,
-          "Each node eventually decides on a sequence",
-          "The decision process might not terminate")).build();
+        .addValidator(SimValidator(checkCompleteness, 500000,
+          "Every command proposed by a correct process is eventually included in a decided sequence by every correct process",
+          "There exist at least one command proposed by a correct process which did not get included in a process' decided sequence")).build();
     
 
     val scenario =
-      ValidationSimulation(prop1, prop2, prop3) inParallel(
+      ValidationSimulation(prop1, prop2, prop4) inParallel(
         raise(1, setupOp).arrival(Distributions.constant(0)), raise(1, setUniformDelay(), constant(latencyMin), constant(latencyMax)).arrival(constant(0)),
         raise(numNodes, startPaxos, 1.toN).arrival(constant(0))) andThen 4000.millis afterTermination
         raise(numFailed, killOP, Distributions.intSeq(((numNodes-numFailed) until numNodes))).arrival(constant(0)) andThen 5000.millis afterTermination
         raise(1, splitNetwork()).arrival(constant(0)) andThen 4000.millis afterTermination 
         raise(1, setUniformDelay(), constant(latencyMin), constant(latencyMax)).arrival(constant(0))  andThen 10000000l.millis afterTermination Terminate;
   }
-
 }

@@ -5,10 +5,9 @@ import java.net.{InetAddress, InetSocketAddress}
 import se.kth.edx.id2203.core.ExercisePrimitives.FifoP2PLink.{FifoLinkInit, FifoPayload}
 import se.kth.edx.id2203.core.ExercisePrimitives.PerfectP2PLink._
 import se.kth.edx.id2203.core.Ports._
-import se.sics.kompics.{Init, KompicsEvent}
 import se.sics.kompics.network.{Address, Network, Transport}
 import se.sics.kompics.sl.{ComponentDefinition, _}
-import se.kth.edx.id2203.core._
+import se.sics.kompics.{Init, KompicsEvent}
 
 import scala.collection.mutable
 
@@ -27,7 +26,9 @@ object ExercisePrimitives {
   }
 
   object PerfectP2PLink {
+
     case class PerfectLinkInit(selfAddr: Address) extends Init[PerfectP2PLink];
+
     case class PerfectLinkMessage(src: Address, dest: Address, payload: KompicsEvent) extends TMessage(THeader(src, dest, Transport.TCP));
   }
 
@@ -50,45 +51,70 @@ object ExercisePrimitives {
       }
     }
 
-  }                     
-  
-  object FifoP2PLink {
-    case class FifoLinkInit(self: Address, topology: Set[Address]) extends Init[FifoP2PLink];
-    case class FifoPayload(payload: KompicsEvent, seq: Int) extends KompicsEvent
   }
-  
+
+  object FifoP2PLink {
+
+    case class FifoLinkInit(self: Address, topology: Set[Address]) extends Init[FifoP2PLink];
+
+    case class FifoPayload(payload: KompicsEvent, seq: Int) extends KompicsEvent
+
+  }
+
   class FifoP2PLink(fifop2pInit: FifoLinkInit) extends ComponentDefinition {
-    
+
     val fifoLink = provides[FIFOPerfectLink];
-    val pLink = requires[PerfectLink]; 
-    
+    val pLink = requires[PerfectLink];
+
     val self = fifop2pInit.self;
     val topology = fifop2pInit.topology;
-    
-    val lsn  = collection.mutable.Map[Address, Int]().withDefaultValue(0);
+
+    val lsn = collection.mutable.Map[Address, Int]().withDefaultValue(0);
     val next = collection.mutable.Map[Address, Int]().withDefaultValue(1);
     val pending = collection.mutable.Map[Address, mutable.Set[(Int, KompicsEvent)]]().withDefaultValue(mutable.Set.empty);
-    
+
     fifoLink uponEvent {
       case PL_Send(dest, payload) => handle {
         lsn += dest -> (lsn(dest) + 1);
         trigger(PL_Send(dest, FifoPayload(payload, lsn(dest))) -> pLink);
       }
     }
-    
+
     pLink uponEvent {
       case PL_Deliver(p, FifoPayload(payload, num)) => handle {
-        pending(p) += ((num, payload))
-        
-        while(pending(p) map(_._1) contains next(p) ){
-          val toDeliver = (pending(p) filter (_._1 == next(p)) head)
+
+        if (num == next(p)) {
           next(p) += 1;
-          pending(p) -= toDeliver
-          trigger(PL_Deliver(p, toDeliver._2) -> fifoLink);
+          trigger(PL_Deliver(p, payload) -> fifoLink);
+          
+          var hasPending = false;
+          //trigger possible pending messages
+          while (!pending(p).isEmpty && (pending(p) map (_._1) contains next(p))) {
+            val toDeliver = (pending(p) filter (_._1 == next(p)) head)
+            next(p) += 1;
+            pending(p) -= toDeliver
+            trigger(PL_Deliver(p, toDeliver._2) -> fifoLink);
+            hasPending = true;
+          }
+          
+          //discard duplicates
+          if(hasPending){
+            pending(p) = pending(p) filter(_._1 > next(p));
+          }
+        }
+        else if (num > next(p)) {
+          pending(p) += ((num, payload))
+          println(s"${System.currentTimeMillis()} :: ${AddressUtils.toRank(p)} -> " +
+            s"${AddressUtils.toRank(self)} got ${num} > ${next(p)} - #pending (${pending(p).size})");
+        }
+        else {
+          println(s"${System.currentTimeMillis()} :: ${AddressUtils.toRank(p)} -> " +
+            s"${AddressUtils.toRank(self)} got duplicate:  ${num} < ${next(p)} - #pending (${pending(p).size}) : ${pending(p)}");
+
         }
       }
     }
-    
+
   }
 
   case class VectorClock(var vc: Map[Address, Int]) {
