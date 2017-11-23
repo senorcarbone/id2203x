@@ -9,7 +9,7 @@ import se.sics.kompics.network.{Address, Network, Transport}
 import se.sics.kompics.sl.{ComponentDefinition, _}
 import se.sics.kompics.{Init, KompicsEvent}
 
-import scala.collection.mutable
+import scala.collection.{SortedMap, mutable}
 
 object ExercisePrimitives {
 
@@ -71,7 +71,8 @@ object ExercisePrimitives {
 
     val lsn = collection.mutable.Map[Address, Int]().withDefaultValue(0);
     val next = collection.mutable.Map[Address, Int]().withDefaultValue(1);
-    val pending = collection.mutable.Map[Address, mutable.Set[(Int, KompicsEvent)]]().withDefaultValue(mutable.Set.empty);
+    
+    val pending = collection.mutable.Map.empty[Address, SortedMap[Int, KompicsEvent]];
 
     fifoLink uponEvent {
       case PL_Send(dest, payload) => handle {
@@ -87,29 +88,31 @@ object ExercisePrimitives {
           next(p) += 1;
           trigger(PL_Deliver(p, payload) -> fifoLink);
           
-          var hasPending = false;
-          //trigger possible pending messages
-          while (!pending(p).isEmpty && (pending(p) map (_._1) contains next(p))) {
-            val toDeliver = (pending(p) filter (_._1 == next(p)) head)
-            next(p) += 1;
-            pending(p) -= toDeliver
-            trigger(PL_Deliver(p, toDeliver._2) -> fifoLink);
-            hasPending = true;
-          }
+          //deliver possible pending messages
           
-          //discard duplicates
-          if(hasPending){
-            pending(p) = pending(p) filter(_._1 > next(p));
+          pending.get(p) match {
+            case Some(entries) =>
+              while(entries.contains(next(p))){
+                trigger(PL_Deliver(p, entries.get(next(p)).get) -> fifoLink);
+                pending += p -> (entries - next(p)); 
+                next(p) += 1;
+              }
+            case None => 
           }
         }
         else if (num > next(p)) {
-          pending(p) += ((num, payload))
-          println(s"${System.currentTimeMillis()} :: ${AddressUtils.toRank(p)} -> " +
-            s"${AddressUtils.toRank(self)} got ${num} > ${next(p)} - #pending (${pending(p).size})");
+          pending.get(p) match {
+            case Some(entries) =>
+              pending += p -> (entries + (num -> payload));
+            case None =>
+              pending += p -> SortedMap(num -> payload);
+          }
+//          println(s"${System.currentTimeMillis()} :: ${AddressUtils.toRank(p)} -> " +
+//            s"${AddressUtils.toRank(self)} got ${num} > ${next(p)} - #pending (${pending(p).size})");
         }
         else {
-          println(s"${System.currentTimeMillis()} :: ${AddressUtils.toRank(p)} -> " +
-            s"${AddressUtils.toRank(self)} got duplicate:  ${num} < ${next(p)} - #pending (${pending(p).size}) : ${pending(p)}");
+//          println(s"${System.currentTimeMillis()} :: ${AddressUtils.toRank(p)} -> " +
+//            s"${AddressUtils.toRank(self)} got duplicate:  ${num} < ${next(p)} - #pending (${pending(p).size}) : ${pending(p)}");
 
         }
       }

@@ -122,7 +122,7 @@ object TesterPrimitives {
     ctrl uponEvent {
       case _: Start => handle {
         startTimer(period);
-        println(s" ${System.currentTimeMillis()} :: ${AddressUtils.toRank(self)}-${self.hashCode()} started BLE");
+//        println(s" ${System.currentTimeMillis()} :: ${AddressUtils.toRank(self)}-${self.hashCode()} started BLE");
       }
     }
 
@@ -152,9 +152,6 @@ object TesterPrimitives {
         if (r == round) {
           ballots += (src -> b)
         } else {
-          if(r > round){
-            val failHereDamnit = true;
-          }
 //          println(s" ${System.currentTimeMillis()} :: ${AddressUtils.toRank(self)} received HB for ${r} in ${round}");
           period += delta;
           //        if (b > highestBallot) {

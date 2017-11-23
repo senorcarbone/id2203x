@@ -14,7 +14,6 @@ import se.sics.kompics.simulator.SimulationScenario
 import se.sics.kompics.simulator.network.identifier.Identifier
 import se.sics.kompics.simulator.network.identifier.impl.SocketIdExtractor
 import se.sics.kompics.simulator.network.impl.NetworkModels
-import se.sics.kompics.simulator.network.impl.NetworkModels.withDisconnectedModel
 import se.sics.kompics.simulator.util.GlobalView
 import se.sics.kompics.sl.simulator._
 import se.sics.kompics.sl.{ComponentDefinition, Init, _}
@@ -45,8 +44,6 @@ object SequenceConsensusTester {
   class InterceptorPayload(id: Int) extends KompicsEvent with Serializable;
 
   // - Program interfaces for Simulation
-
-
   case class ProposalTimeout(timeout: ScheduleTimeout) extends Timeout(timeout)
   
   case class ProposedCommand(cmd: RSM_SimCmd) extends KompicsEvent;
@@ -98,7 +95,7 @@ object SequenceConsensusTester {
         if(isLeader && numProposals <= maxProposals){
           val nextCmd = RSM_SimCmd(r.nextLong());
           storeAndBroadcast(nextCmd);
-          println(s" ${System.currentTimeMillis()} :: ${AddressUtils.toRank(self)} proposing ${nextCmd.id.toByte}.");
+//          println(s" ${System.currentTimeMillis()} :: ${AddressUtils.toRank(self)} proposing ${nextCmd.id.toByte}.");
           scheduleProposal();
         }
         else
@@ -113,7 +110,7 @@ object SequenceConsensusTester {
     leadelection uponEvent {
       case BLE_Leader(newLeader, blt) => handle{
         curLeader = AddressUtils.toRank(newLeader);
-        println(s" ${System.currentTimeMillis()} :: ${AddressUtils.toRank(self)} new leader:  $curLeader with ballot $blt");
+//        println(s" ${System.currentTimeMillis()} :: ${AddressUtils.toRank(self)} new leader:  $curLeader with ballot $blt");
         
         if(newLeader == self && !isLeader){
           scheduleProposal();
@@ -130,10 +127,8 @@ object SequenceConsensusTester {
         val appendLog = scLog.get(self).getOrElse(ListBuffer.empty[RSM_SimCmd]);
         appendLog.add(y);
         scLog.put(self, appendLog);
-        //DEBUG
-        println(s" ${System.currentTimeMillis()} :: ${AddressUtils.toRank(self)} decided ${y.id.toByte}  [length : ${appendLog.size}, leader : ${curLeader}]");
-        //DEBUG
         gv.setValue(LOG_DECIDED, scLog);
+//        println(s" ${System.currentTimeMillis()} :: ${AddressUtils.toRank(self)} decided: ${appendLog.size}: $y- lead: ${curLeader}");
       }
     }
 
@@ -280,7 +275,6 @@ object SequenceConsensusTester {
           "Every command proposed by a correct process is eventually included in a decided sequence by every correct process",
           "There exist at least one command proposed by a correct process which did not get included in a process' decided sequence")).build();
     
-
     val scenario =
       ValidationSimulation(prop1, prop2, prop4) inParallel(
         raise(1, setupOp).arrival(Distributions.constant(0)), raise(1, setUniformDelay(), constant(latencyMin), constant(latencyMax)).arrival(constant(0)),
