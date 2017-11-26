@@ -44,7 +44,7 @@ object BLETester {
 
     ble uponEvent {
       case x: BLE_Leader => handle {
-        //        println(s"Process $self triggers $x")
+//                println(s"Process $self triggers $x")
         val gv = cfg.getValue[GlobalView]("simulation.globalview");
         val globalState = gv.getValue(BLETester.GLOBAL_STATE, classOf[HashMap[Address, ListBuffer[BLE_Leader]]]);
         val myList = globalState.get(self).getOrElse(ListBuffer.empty[BLE_Leader])
