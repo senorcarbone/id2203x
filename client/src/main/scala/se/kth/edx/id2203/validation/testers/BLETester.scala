@@ -15,7 +15,7 @@ import se.sics.kompics.sl.simulator.{Op, StartNode, _}
 import se.sics.kompics.sl.{ComponentDefinition, Init, _}
 import se.sics.kompics.timer.Timer
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.collection.mutable._
 import scala.concurrent.duration._
@@ -43,12 +43,12 @@ object BLETester {
     };
 
     ble uponEvent {
-      case x: BLE_Leader => handle {
+      case x: BLE_Leader => {
 //                println(s"Process $self triggers $x")
         val gv = cfg.getValue[GlobalView]("simulation.globalview");
         val globalState = gv.getValue(BLETester.GLOBAL_STATE, classOf[HashMap[Address, ListBuffer[BLE_Leader]]]);
         val myList = globalState.get(self).getOrElse(ListBuffer.empty[BLE_Leader])
-        myList.add(x);
+        myList += (x);
         globalState.put(self, myList);
         gv.setValue(BLETester.GLOBAL_STATE, globalState);
       }
@@ -174,11 +174,18 @@ object BLETester {
 
     val delayOp = Op((_: Unit) => ChangeNetwork(withDisconnectedModel(
       new SocketIdExtractor(), NetworkModels.withUniformRandomDelay(5, maxLinkDelay, SimulationScenario.getRandom),
-      new java.util.HashSet[Identifier](topology.slice(0, discNodes).map(x => new SocketIdExtractor().extract(x)).toSet[Identifier]))));
+      new java.util.HashSet[Identifier](topology.slice(0, discNodes).map(x => new SocketIdExtractor().extract(x)).toSet[Identifier].asJava))));
 
+    /*
     val startBLEs = Op((self: Integer) => StartNode(AddressUtils.toAddress(self),
       Init[BLEParent](AddressUtils.toAddress(self), compClass),
-      Map("ble.simulation.topology" -> topology, "ble.simulation.delay" -> delay, "ble.simulation.delta" -> delta)));
+      Map("ble.simulation.topology" -> topology, "ble.simulation.delay" -> delay, "ble.simulation.delta" -> delta).asJava));
+    **/
+
+    val startBLEs = Op { (self: Integer) =>
+      val selfAddr = AddressUtils.toAddress(self);
+      StartNode(selfAddr, Init[BLEParent](selfAddr, compClass))
+    }
 
     val killOP = Op { (self: Integer) => KillNode(sorted(self.toInt)) }
 

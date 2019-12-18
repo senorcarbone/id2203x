@@ -25,13 +25,13 @@ class Pinger extends ComponentDefinition {
 
   //STEP 3B: Define event handlers that implement service logic
   ctrl uponEvent{
-    case _: Start => handle {
+    case _: Start => {
       print("Ping")
       trigger(Ping, ppp);
     }
   }
   ppp uponEvent{
-    case Pong => handle {
+    case Pong => {
       print("Ping")
       trigger(Ping, ppp);
     }
@@ -48,7 +48,7 @@ class Ponger extends ComponentDefinition{
 
   //STEP 3B: Define event handlers that implement service logic 
   ppn uponEvent{
-    case Ping => handle{
+    case Ping => {
       /*
       Insert missing handler logic here
       */

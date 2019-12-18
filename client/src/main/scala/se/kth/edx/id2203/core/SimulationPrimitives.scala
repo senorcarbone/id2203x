@@ -31,7 +31,7 @@ object SimulationPrimitives {
     }
     
     timer uponEvent {
-      case TriggerTimeout(_, evt) => handle {
+      case TriggerTimeout(_, evt) => {
       trigger(evt -> getInterceptedPort());
       }
     }

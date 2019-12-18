@@ -18,7 +18,7 @@ import se.sics.kompics.sl.{ ComponentDefinition, Init, _ }
 import se.sics.kompics.sl.simulator.{ Op, StartNode, _ }
 import se.sics.kompics.timer.Timer
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.collection.mutable._
 import scala.concurrent.duration._
@@ -46,12 +46,12 @@ object EPFDTester {
     };
 
     epfd uponEvent {
-      case x: KompicsEvent => handle {
+      case x: KompicsEvent => {
         //        println(s"Process $self triggers $x")
         val gv = cfg.getValue[GlobalView]("simulation.globalview");
         val globalState = gv.getValue(EPFDTester.GLOBAL_STATE, classOf[HashMap[Address, ListBuffer[KompicsEvent]]]);
         val myList = globalState.get(self).getOrElse(ListBuffer.empty[KompicsEvent])
-        myList.add(x);
+        myList += (x);
         globalState.put(self, myList);
         gv.setValue(EPFDTester.GLOBAL_STATE, globalState);
       }
@@ -161,11 +161,18 @@ object EPFDTester {
 
     val delayOp = Op((_: Unit) => ChangeNetwork(withDisconnectedModel(
       new SocketIdExtractor(), NetworkModels.withUniformRandomDelay(5, maxLinkDelay, SimulationScenario.getRandom),
-      new java.util.HashSet[Identifier](topology.slice(0, discNodes).map(x => new SocketIdExtractor().extract(x)).toSet[Identifier]))));
+      new java.util.HashSet[Identifier](topology.slice(0, discNodes).map(x => new SocketIdExtractor().extract(x)).toSet[Identifier].asJava))));
 
+    /*
     val startEPFDs = Op((self: Integer) => StartNode(AddressUtils.toAddress(self),
       Init[EPFDParent](AddressUtils.toAddress(self), compClass),
       Map("epfd.simulation.topology" -> topology, "epfd.simulation.delay" -> delay, "epfd.simulation.delta" -> delta)));
+    */
+
+    val startEPFDs = Op { (self: Integer) =>
+      val selfAddr = AddressUtils.toAddress(self);
+      StartNode(selfAddr, Init[EPFDParent](AddressUtils.toAddress(self), compClass))
+    }
 
     val killOP = Op { (self: Integer) => KillNode(AddressUtils.toAddress(self)) }
 

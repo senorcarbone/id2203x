@@ -15,7 +15,7 @@ import se.sics.kompics.sl.simulator._
 import se.sics.kompics.sl.{ ComponentDefinition, Init, _ }
 import se.sics.kompics.timer.Timer
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.mutable._
 import collection.immutable.Set
 import collection.mutable.ListBuffer
@@ -49,17 +49,17 @@ object BEBTester {
     val beb = requires[BestEffortBroadcast];
 
     ctrl uponEvent {
-      case _: Start => handle {
+      case _: Start => {
         initialize(pInit);
       }
     }
 
     beb uponEvent {
-      case x: BEB_Deliver => handle{
+      case x: BEB_Deliver => {
         val gv = cfg.getValue[GlobalView]("simulation.globalview");
         val stateLogs = gv.getValue(LOG_STATE, classOf[HashMap[Address, ListBuffer[BEB_Deliver]]]);
         val myList = stateLogs.get(self).getOrElse(ListBuffer.empty[BEB_Deliver])
-        myList.add(x)
+        myList += (x)
         stateLogs.put(self, myList);
         gv.setValue(LOG_STATE, stateLogs);
       }
@@ -148,7 +148,7 @@ object BEBTester {
               if (!msgs.isDefined) {
                 false;
               } else {
-                msgs.get.foldLeft[Set[Address]](Set.empty[Address])((s, bebmsg) => s + bebmsg.src).containsAll(topology);
+                msgs.get.foldLeft[Set[Address]](Set.empty[Address])((s, bebmsg) => s + bebmsg.src).subsetOf(topology);
               }
             })
           }, 109999,

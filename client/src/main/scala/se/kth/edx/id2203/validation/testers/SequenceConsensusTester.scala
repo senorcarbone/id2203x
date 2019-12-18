@@ -20,7 +20,7 @@ import se.sics.kompics.sl.{ComponentDefinition, Init, _}
 import se.sics.kompics.timer.{ScheduleTimeout, Timeout, Timer}
 import se.sics.kompics.{KompicsEvent, Start}
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.immutable.Set
 import scala.collection.mutable
 import scala.collection.mutable.{ListBuffer, _}
@@ -72,26 +72,26 @@ object SequenceConsensusTester {
     }
 
     ctrl uponEvent {
-      case _: Start => handle {
+      case _: Start => {
         initialize(pInit);
         if (correct.contains(self)) scheduleProposal();
       }
     }
 
     pp2p uponEvent {
-      case PL_Deliver(_, ProposedCommand(nextCommand)) => handle {
+      case PL_Deliver(_, ProposedCommand(nextCommand)) => {
         trigger(SC_Propose(nextCommand) -> seqconsensus);
       }
     }
 
     timer uponEvent {
-      case ProposalTimeout(_) => handle {
+      case ProposalTimeout(_) => {
         if (numProposals <= maxProposals) {
           if (currentCmd == None) {
             currentCmd = Some(RSM_SimCmd(r.nextLong()));
             val gv = cfg.getValue[GlobalView](LOG_GLOBAL);
             val proposed = gv.getValue(LOG_PROPOSED, classOf[scala.collection.mutable.Set[RSM_SimCmd]]);
-            proposed.add(currentCmd.get);
+            proposed += (currentCmd.get);
             numProposals = numProposals + 1;
           }
           topology.foreach(p => trigger(PL_Send(p, ProposedCommand(currentCmd.get)) -> pp2p));
@@ -103,17 +103,17 @@ object SequenceConsensusTester {
     var curLeader = AddressUtils.toRank(self);
 
     leadelection uponEvent {
-      case BLE_Leader(newLeader, blt) => handle {
+      case BLE_Leader(newLeader, blt) => {
         curLeader = AddressUtils.toRank(newLeader);
       }
     }
 
     seqconsensus uponEvent {
-      case x@SC_Decide(y@RSM_SimCmd(_)) => handle {
+      case x@SC_Decide(y@RSM_SimCmd(_)) => {
         val gv = cfg.getValue[GlobalView](LOG_GLOBAL);
         val scLog = gv.getValue(LOG_DECIDED, classOf[HashMap[Address, ListBuffer[RSM_SimCmd]]]);
         val appendLog = scLog.get(self).getOrElse(ListBuffer.empty[RSM_SimCmd]);
-        appendLog.add(y);
+        appendLog += (y);
         scLog.put(self, appendLog);
         gv.setValue(LOG_DECIDED, scLog);
 
@@ -203,10 +203,14 @@ object SequenceConsensusTester {
       NetworkModels.withBinaryModel(new SocketIdExtractor(),
         NetworkModels.withUniformRandomDelay(latencyMin, latencyMax, SimulationScenario.getRandom),
         NetworkModels.withConstantDelay(splitNetworkDelay),
-        new java.util.HashSet[Identifier](topology.slice(topology.size - failed.size - numDisconnected, topology.size - failed.size + 1).map(x => new SocketIdExtractor().extract(x)).toSet[Identifier]))));
+        new java.util.HashSet[Identifier](topology.slice(topology.size - failed.size - numDisconnected, topology.size - failed.size + 1).map(x => new SocketIdExtractor().extract(x)).toSet[Identifier].asJava))));
 
     val killOP = Op { (self: Integer) => KillNode(sorted(self.toInt)) }
 
+
+    // Old code that was not compiling. 
+    // TODO: Verify that the Map is not needed any longer...
+    /*
     val startPaxos = Op((self: Integer) => {
       StartNode(toAddress(self), Init[SeqConsensusParent](toAddress(self),
         topology.toSet, correct.toSet,
@@ -217,6 +221,13 @@ object SequenceConsensusTester {
           "sc.simulation.rate" -> sc_Rate,
           "sc.simulation.maxProposals" -> sc_maxProp))
     });
+    */
+
+    val startPaxos = Op { (self: Integer) =>
+      val selfAddr = AddressUtils.toAddress(self);
+      StartNode(selfAddr, Init[SeqConsensusParent](selfAddr, topology.toSet, correct.toSet,
+        asJavaClass[CTYPE](typeOf[CTYPE]), ScheduleTriggers(selfAddr)()))
+    }
 
     def checkValidity(view: GlobalView): Boolean = {
       val proposed = view.getValue(LOG_PROPOSED, classOf[scala.collection.mutable.Set[RSM_SimCmd]]);
@@ -228,7 +239,8 @@ object SequenceConsensusTester {
       val decided = view.getValue(LOG_DECIDED, classOf[mutable.HashMap[Address, ListBuffer[RSM_SimCmd]]])
       if (!decided.isEmpty) {
         val maxTpl = decided.maxBy(_._2.size);
-        return decided.forall { x => x._2.toList == maxTpl._2.subList(0, x._2.size).toList };
+        return decided.forall { x => x._2.toList == maxTpl._2.slice(0, x._2.size).toList };
+        //return decided.forall { x => x._2.toList == maxTpl._2.subList(0, x._2.size).toList };
       }
       return true;
     }
@@ -238,7 +250,7 @@ object SequenceConsensusTester {
       val decided = view.getValue(LOG_DECIDED, classOf[mutable.HashMap[Address, ListBuffer[RSM_SimCmd]]])
 
       return correct.forall(p => decided.get(p).isDefined) &&
-        correct.forall(p => decided.get(p).get.toSet.containsAll(proposed))
+        correct.forall(p => decided.get(p).get.toSet.subsetOf(proposed))
     }
 
     val prop1 =

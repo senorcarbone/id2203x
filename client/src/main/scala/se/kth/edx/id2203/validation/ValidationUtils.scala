@@ -179,13 +179,13 @@ object ValidationUtils {
         }
 
         ctrl uponEvent {
-            case _: Start => handle {
+            case _: Start => {
                 properties.foreach(_.validators.foreach(x => trigger(genTimeout(x) -> timer)));
             }
         }
 
         timer uponEvent {
-            case PropertyCheck(_, token) => handle {
+            case PropertyCheck(_, token) => {
                 val passed = unregister(token).get.validate(getGlobalView()).valid;
                 if ((terminateOnInvalid && !passed) || pendingValidations.isEmpty) finalizeExecution();
             }

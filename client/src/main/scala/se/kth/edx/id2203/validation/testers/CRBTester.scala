@@ -15,7 +15,7 @@ import se.sics.kompics.sl.simulator._
 import se.sics.kompics.sl.{ ComponentDefinition, Init, _ }
 import se.sics.kompics.timer.Timer
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.mutable._
 import collection.immutable.Set
 import collection.mutable.ListBuffer
@@ -49,26 +49,26 @@ object CRBTester {
     val crb = requires[CausalOrderReliableBroadcast];
 
     ctrl uponEvent {
-      case _: Start => handle {
+      case _: Start => {
         initialize(pInit);
       }
     }
 
     crb uponEvent {
-      case x@CRB_Deliver(_, y: BroadcastedMessage) => handle{
+      case x@CRB_Deliver(_, y: BroadcastedMessage) => {
         val gv = cfg.getValue[GlobalView]("simulation.globalview");
         val stateLogs = gv.getValue(LOG_STATE, classOf[HashMap[Address, ListBuffer[CRB_Deliver]]]);
         val myList = stateLogs.get(self).getOrElse(ListBuffer.empty[CRB_Deliver])
-        myList.add(x)
+        myList += (x)
         stateLogs.put(self, myList);
         gv.setValue(LOG_STATE, stateLogs);
       }
-      case y: CRB_Deliver => handle {
+      case y: CRB_Deliver => {
         //we received something we did not expect...we should log an incorrect value
         val gv = cfg.getValue[GlobalView]("simulation.globalview");
         val stateLogs = gv.getValue(LOG_STATE, classOf[HashMap[Address, ListBuffer[CRB_Deliver]]]);
         val myList = stateLogs.get(self).getOrElse(ListBuffer.empty[CRB_Deliver])
-        myList.add(CRB_Deliver(self, BroadcastedMessage(self, Random.nextInt())))
+        myList += (CRB_Deliver(self, BroadcastedMessage(self, Random.nextInt())))
         stateLogs.put(self, myList);
         gv.setValue(LOG_STATE, stateLogs);
       } 
@@ -174,7 +174,7 @@ object CRBTester {
                 false;
               } else {
                 del.get.foldLeft[Set[BroadcastedMessage]](Set.empty[BroadcastedMessage])((s, bebmsg) => s + bebmsg.payload.asInstanceOf[BroadcastedMessage])
-                  .containsAll(msgs.toSet[BroadcastedMessage]);
+                  .subsetOf(msgs.toSet[BroadcastedMessage]);
               }
             })
           }, 109999,

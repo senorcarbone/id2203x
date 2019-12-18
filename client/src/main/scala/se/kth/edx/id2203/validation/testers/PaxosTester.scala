@@ -25,7 +25,7 @@ import se.sics.kompics.timer.Timer
 import se.sics.kompics.{KompicsEvent, Start}
 
 import scala.language.existentials
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.mutable._
 import collection.immutable.Set
 import collection.mutable.ListBuffer
@@ -58,17 +58,17 @@ object PaxosTester {
     val consensus = requires[Consensus];
 
     ctrl uponEvent {
-      case _: Start => handle {
+      case _: Start => {
         initialize(pInit);
       }
     }
 
     consensus uponEvent {
-      case x @ C_Decide(y) => handle{
+      case x @ C_Decide(y) => {
         val gv = cfg.getValue[GlobalView]("simulation.globalview");
         val stateLogs = gv.getValue(LOG_STATE, classOf[HashMap[Address, ListBuffer[C_Decide]]]);
         val myList = stateLogs.get(self).getOrElse(ListBuffer.empty[C_Decide]);
-        myList.add(C_Decide(ValidationUtils.unfoldValue(y)));
+        myList += (C_Decide(ValidationUtils.unfoldValue(y)));
         stateLogs.put(self, myList);
         gv.setValue(LOG_STATE, stateLogs);
       }
@@ -150,7 +150,7 @@ object PaxosTester {
        SimulationUtils.newDisconnectedModel(new SocketIdExtractor(),
         NetworkModels.withUniformRandomDelay(latencyMin, latencyMax, SimulationScenario.getRandom),
         NetworkModels.withConstantDelay(100*latencyMax),
-        topology.slice(((topology.size+1)/2),topology.size).map(x => new SocketIdExtractor().extract(x)).toSet[Identifier])
+        topology.slice(((topology.size+1)/2),topology.size).map(x => new SocketIdExtractor().extract(x)).toSet[Identifier].asJava)
     ));
 
     //this is a true random (not using the simulator seed) to ensure uniqueness across validations

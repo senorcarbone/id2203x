@@ -102,14 +102,14 @@ class ParentC(init: GameOfLifeInit) extends ComponentDefinition {
     private var generation = -1l
 
     ctrl uponEvent {
-        case _: Start => handle {
+        case _: Start => {
             println("Starting generation 0...");
             generation = 0;
             trigger(Progress(generation) -> envOut);
         }
     }
     envIn uponEvent {
-        case BroadcastState(gen, x, y, state) => handle {
+        case BroadcastState(gen, x, y, state) => {
             if (x >= 0 && y >= 0 && x < size && y < size) {
                 stateGrid(x)(y) = state;
                 broadcastCount += 1;
@@ -154,7 +154,7 @@ class ParentC(init: GameOfLifeInit) extends ComponentDefinition {
 //  val envIn = requires(EnvironmentPort);
 //  val envOut = provides(EnvironmentPort);
 //  envIn uponEvent {
-//    case Progress(generation) => handle {
+//    case Progress(generation) => {
 //      //println(s"Cell($xPos, $yPos) starting generation $generation as $state");
 //      trigger(BroadcastState(generation, xPos, yPos, state) -> envOut);
 //      if (lastGen < generation) {
@@ -162,7 +162,7 @@ class ParentC(init: GameOfLifeInit) extends ComponentDefinition {
 //        lastGen = generation;
 //      }
 //    }
-//    case BroadcastState(generation, x, y, otherState) => handle {
+//    case BroadcastState(generation, x, y, otherState) => {
 //      if (lastGen < generation) {
 //        view.clear();
 //        lastGen = generation;
@@ -210,7 +210,7 @@ class ParentC(init: GameOfLifeInit) extends ComponentDefinition {
 //  val envOut = provides(EnvironmentPort);
 //
 //  envIn uponEvent {
-//    case Progress(generation) => handle {
+//    case Progress(generation) => {
 //      trigger(BroadcastState(generation, xPos, yPos, Border) -> envOut);
 //    }
 //  }

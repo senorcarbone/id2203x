@@ -17,7 +17,7 @@ import se.sics.kompics.timer.{ ScheduleTimeout, Timeout, Timer }
 import se.sics.kompics.{ KompicsEvent, Start }
 
 import scala.annotation.tailrec
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration._
 import scala.reflect.runtime.universe._
@@ -56,33 +56,33 @@ object ABDTester {
     }
 
     ctrl uponEvent {
-      case _: Start => handle {
+      case _: Start => {
         initialize(pInit);
         pInit.triggers.foreach(scheduleWriteReqLogging(_));
       }
     }
 
     timer uponEvent {
-      case RegisterOperationStart(_, writeEvent) => handle {
+      case RegisterOperationStart(_, writeEvent) => {
         val gv = cfg.getValue[GlobalView]("simulation.globalview");
         val globalState = gv.getValue(GLOBAL_STATE, classOf[ListBuffer[(Address, Long, KompicsEvent)]]);
-        globalState.add((self, System.currentTimeMillis(), writeEvent))
+        globalState += ((self, System.currentTimeMillis(), writeEvent))
       }
     }
 
     nnar uponEvent {
-      case x: AR_Read_Response => handle {
+      case x: AR_Read_Response => {
         val gv = cfg.getValue[GlobalView]("simulation.globalview");
         val globalState = gv.getValue(GLOBAL_STATE, classOf[ListBuffer[(Address, Long, KompicsEvent)]]);
         //        println(s"${System.currentTimeMillis()} -- INTERCEPTOR :: Reader ${toRank(self)} FINISHED $x")
-        globalState.add((self, System.currentTimeMillis(), x));
+        globalState += ((self, System.currentTimeMillis(), x));
         gv.setValue(GLOBAL_STATE, globalState);
       }
-      case x: AR_Write_Response => handle {
+      case x: AR_Write_Response => {
         val gv = cfg.getValue[GlobalView]("simulation.globalview");
         val globalState = gv.getValue(GLOBAL_STATE, classOf[ListBuffer[(Address, Long, KompicsEvent)]]);
         //        println(s"${System.currentTimeMillis()} -- INTERCEPTOR :: Writer ${toRank(self)} FINISHED $x")
-        globalState.add((self, System.currentTimeMillis(), x));
+        globalState += ((self, System.currentTimeMillis(), x));
         gv.setValue(GLOBAL_STATE, globalState);
       }
     }
@@ -135,7 +135,7 @@ object ABDTester {
     val withReadDependencies = allOps.map(evt => {
       if (!evt.write && evt.value != None) {
         val writeMatches = allOps.filter(writeop => writeop.write && writeop.value == evt.value)
-        if (!writeMatches.isEmpty) AR_Op(false, evt.value, evt.start, evt.stop, evt.edges + writeMatches.get(0)) else evt
+        if (!writeMatches.isEmpty) AR_Op(false, evt.value, evt.start, evt.stop, evt.edges + writeMatches(0)) else evt
       } else evt;
     });
 

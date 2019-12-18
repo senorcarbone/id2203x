@@ -45,12 +45,12 @@ object TesterPrimitives {
       case Init(s: Address, t: Set[Address] @unchecked) => (s, t)
     };
     beb uponEvent {
-      case x: BEB_Broadcast => handle {
+      case x: BEB_Broadcast => {
         topology.foreach(addr => trigger(PL_Send(addr, x) -> pp2p));
       }
     }
     pp2p uponEvent {
-      case PL_Deliver(src, BEB_Broadcast(payload)) => handle {
+      case PL_Deliver(src, BEB_Broadcast(payload)) => {
         trigger(BEB_Deliver(src, payload) -> beb);
       }
     }
@@ -120,14 +120,14 @@ object TesterPrimitives {
     }
 
     ctrl uponEvent {
-      case _: Start => handle {
+      case _: Start => {
         startTimer(period);
 //        println(s" ${System.currentTimeMillis()} :: ${AddressUtils.toRank(self)}-${self.hashCode()} started BLE");
       }
     }
 
     timer uponEvent {
-      case LECheckTimeout(_) => handle {
+      case LECheckTimeout(_) => {
         checkLeader();
 
         round += 1;
@@ -142,13 +142,13 @@ object TesterPrimitives {
     }
 
     pl uponEvent {
-      case PL_Deliver(src, LEHeartbeatReq(r, hb)) => handle {
+      case PL_Deliver(src, LEHeartbeatReq(r, hb)) => {
         if (hb > highestBallot) {
           highestBallot = hb;
         }
         trigger(PL_Send(src, LEHeartbeatResp(r, ballot)) -> pl);
       }
-      case PL_Deliver(src, LEHeartbeatResp(r, b)) => handle {
+      case PL_Deliver(src, LEHeartbeatResp(r, b)) => {
         if (r == round) {
           ballots += (src -> b)
         } else {

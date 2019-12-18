@@ -40,13 +40,13 @@ object ExercisePrimitives {
     val self = pp2pInit.selfAddr;
 
     pLink uponEvent {
-      case PL_Send(dest, payload) => handle {
+      case PL_Send(dest, payload) => {
         trigger(PerfectLinkMessage(self, dest, payload) -> network);
       }
     }
 
     network uponEvent {
-      case PerfectLinkMessage(src, dest, payload) => handle {
+      case PerfectLinkMessage(src, dest, payload) => {
         trigger(PL_Deliver(src, payload) -> pLink);
       }
     }
@@ -75,14 +75,14 @@ object ExercisePrimitives {
     val pending = collection.mutable.Map.empty[Address, SortedMap[Int, KompicsEvent]];
 
     fifoLink uponEvent {
-      case PL_Send(dest, payload) => handle {
+      case PL_Send(dest, payload) => {
         lsn += dest -> (lsn(dest) + 1);
         trigger(PL_Send(dest, FifoPayload(payload, lsn(dest))) -> pLink);
       }
     }
 
     pLink uponEvent {
-      case PL_Deliver(p, FifoPayload(payload, num)) => handle {
+      case PL_Deliver(p, FifoPayload(payload, num)) => {
 
         if (num == next(p)) {
           next(p) += 1;
@@ -94,7 +94,8 @@ object ExercisePrimitives {
             case Some(entries) =>
               while(entries.contains(next(p))){
                 trigger(PL_Deliver(p, entries.get(next(p)).get) -> fifoLink);
-                pending += p -> (entries - next(p)); 
+                val newMap: SortedMap[Int, KompicsEvent] = (entries - next(p)).to(SortedMap)
+                pending += p -> newMap
                 next(p) += 1;
               }
             case None => 

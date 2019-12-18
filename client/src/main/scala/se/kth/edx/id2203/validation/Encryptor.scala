@@ -272,7 +272,8 @@ object Encryptor extends StrictLogging {
                 obj = pgpFact.nextObject();
             }
         }
-        col.result()
+        val result = col.result().to(collection.immutable.Seq)
+        result
         //        val pgpIt = pgpFact.asScala;
         //        val r = pgpIt flatMap {
         //            case x: PGPKeyRing =>
