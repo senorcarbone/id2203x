@@ -65,7 +65,7 @@ class SequencePaxos(init: Init[SequencePaxos]) extends ComponentDefinition {
   }
 
   ble uponEvent {
-    case BLE_Leader(l, n) => handle {
+    case BLE_Leader(l, n) => {
       if (n > nL) {
         leader = Some(l);
         nL = n;
@@ -92,7 +92,7 @@ class SequencePaxos(init: Init[SequencePaxos]) extends ComponentDefinition {
   }
 
   pl uponEvent {
-    case PL_Deliver(p, Prepare(np, ldp, n)) => handle {
+    case PL_Deliver(p, Prepare(np, ldp, n)) => {
       if (nProm < np) {
         nProm = np;
         state = (FOLLOWER, PREPARE);
@@ -102,7 +102,7 @@ class SequencePaxos(init: Init[SequencePaxos]) extends ComponentDefinition {
 //        logger.debug("Outdated ({} >= {}) Prepare received from {}", Array(nProm, np, p));
       }
     }
-    case PL_Deliver(a, Promise(n, na, sfxa, lda)) => handle {
+    case PL_Deliver(a, Promise(n, na, sfxa, lda)) => {
       if ((n == nL) && (state == (LEADER, PREPARE))) {
         acks += (a -> (na -> sfxa));
         lds += (a -> lda);
@@ -128,7 +128,7 @@ class SequencePaxos(init: Init[SequencePaxos]) extends ComponentDefinition {
         }
       }
     }
-    case PL_Deliver(p, AcceptSync(nL, sfx, ldp)) => handle {
+    case PL_Deliver(p, AcceptSync(nL, sfx, ldp)) => {
       if ((nProm == nL) && (state == (FOLLOWER, PREPARE))) {
         na = nL;
         va = prefix(va, ldp) ++ sfx;
@@ -136,13 +136,13 @@ class SequencePaxos(init: Init[SequencePaxos]) extends ComponentDefinition {
         state = (FOLLOWER, ACCEPT);
       }
     }
-    case PL_Deliver(p, Accept(nL, c)) => handle {
+    case PL_Deliver(p, Accept(nL, c)) => {
       if ((nProm == nL) && (state == (FOLLOWER, ACCEPT))) {
         va = va ++ List(c);
         trigger (PL_Send(p, Accepted(nL, va.size)) -> pl);
       }
     }
-    case PL_Deliver(_, Decide(l, nL)) => handle {
+    case PL_Deliver(_, Decide(l, nL)) => {
       if (nProm == nL) {
         while (ld < l) {
           trigger (SC_Decide(va(ld)) -> sc);
@@ -150,7 +150,7 @@ class SequencePaxos(init: Init[SequencePaxos]) extends ComponentDefinition {
         }
       }
     }
-    case PL_Deliver(a, Accepted(n, m)) => handle {
+    case PL_Deliver(a, Accepted(n, m)) => {
       if ((n == nL) && (state == (LEADER, ACCEPT))) {
         las += (a -> m);
         val supm = las.filter(t => t._2 >= m).size;
@@ -165,7 +165,7 @@ class SequencePaxos(init: Init[SequencePaxos]) extends ComponentDefinition {
   }
 
   sc uponEvent {
-    case SC_Propose(c) => handle {
+    case SC_Propose(c) => {
       if (state == (LEADER, PREPARE)) {
         propCmds = propCmds ++ List(c);
       } 
