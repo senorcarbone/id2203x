@@ -17,7 +17,7 @@ class CellC(init: CellCInit) extends Cell {
     val envIn = requires(EnvironmentPort);
     val envOut = provides(EnvironmentPort);
     envIn uponEvent {
-        case Progress(generation) => handle {
+        case Progress(generation) => {
             //println(s"Cell($xPos, $yPos) starting generation $generation as $state");
             trigger(BroadcastState(generation, xPos, yPos, state) -> envOut);
             if (lastGen < generation) {
@@ -25,7 +25,7 @@ class CellC(init: CellCInit) extends Cell {
                 lastGen = generation;
             }
         }
-        case BroadcastState(generation, x, y, otherState) => handle {
+        case BroadcastState(generation, x, y, otherState) => {
             if (lastGen < generation) {
                 view.clear();
                 lastGen = generation;

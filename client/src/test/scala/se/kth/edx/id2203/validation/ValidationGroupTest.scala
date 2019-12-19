@@ -2,7 +2,7 @@ package org.apache.zeppelin.kompics.validation
 
 import org.junit.Assert._
 import org.junit.Test
-import org.scalatest.junit.AssertionsForJUnit
+import org.scalatestplus.junit.AssertionsForJUnit
 import se.kth.edx.id2203.core.ExercisePrimitives.AddressUtils
 import se.kth.edx.id2203.validation.ValidationUtils._
 import se.sics.kompics.network._
@@ -112,7 +112,7 @@ object TestHelper {
     }
 
     ctrl uponEvent {
-      case _: Start => handle {
+      case _: Start => {
         getGlobalView().setValue(init.token, init.value);
       }
     }
