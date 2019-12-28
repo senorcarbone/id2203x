@@ -1,6 +1,5 @@
 package se.kth.edx.id2203.validation.testers
 
-
 import se.kth.edx.id2203.core.ExercisePrimitives.AddressUtils._
 import se.kth.edx.id2203.core.ExercisePrimitives.FifoP2PLink.FifoLinkInit
 import se.kth.edx.id2203.core.ExercisePrimitives.PerfectP2PLink._
@@ -20,7 +19,7 @@ import se.sics.kompics.sl.{ComponentDefinition, Init, _}
 import se.sics.kompics.timer.{ScheduleTimeout, Timeout, Timer}
 import se.sics.kompics.{KompicsEvent, Start}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.collection.immutable.Set
 import scala.collection.mutable
 import scala.collection.mutable.{ListBuffer, _}
@@ -36,9 +35,11 @@ object SequenceConsensusTester {
   val LOG_DECIDED: String = "simulation.decided"
   val LOG_PROPOSED: String = "simulation.proposed"
 
-  def apply[CTYPE <: ComponentDefinition : TypeTag](): collection.Iterable[ValidationGroup] = {
+  def apply[CTYPE <: ComponentDefinition: TypeTag](): collection.Iterable[ValidationGroup] = {
     SimulationScenario.setSeed(1334)
-    ValidationSimulation.runAndValidate(SeqConsensusValidation[CTYPE](15, 6, 2, 200l, 400l, 5000l, 1, 10l, 300l, 100).scenario);
+    ValidationSimulation.runAndValidate(
+      SeqConsensusValidation[CTYPE](15, 6, 2, 200L, 400L, 5000L, 1, 10L, 300L, 100).scenario
+    );
   }
 
   class InterceptorPayload(id: Int) extends KompicsEvent with Serializable;
@@ -60,7 +61,6 @@ object SequenceConsensusTester {
     var numProposals = 0;
     var currentCmd: Option[RSM_SimCmd] = None;
 
-
     def scheduleProposal(): Unit = {
       val timeout = new ScheduleTimeout(propRate);
       timeout.setTimeoutEvent(ProposalTimeout(timeout));
@@ -68,7 +68,11 @@ object SequenceConsensusTester {
     }
 
     val (self, pInit, topology, correct) = init match {
-      case Init(s: Address, proxyInit: ProxyInterceptorInit, topol: Set[Address]@unchecked, corr: Set[Address]@unchecked) => (s, proxyInit, topol, corr)
+      case Init(s: Address,
+                proxyInit: ProxyInterceptorInit,
+                topol: Set[Address] @unchecked,
+                corr: Set[Address] @unchecked) =>
+        (s, proxyInit, topol, corr)
     }
 
     ctrl uponEvent {
@@ -109,7 +113,7 @@ object SequenceConsensusTester {
     }
 
     seqconsensus uponEvent {
-      case x@SC_Decide(y@RSM_SimCmd(_)) => {
+      case x @ SC_Decide(y @ RSM_SimCmd(_)) => {
         val gv = cfg.getValue[GlobalView](LOG_GLOBAL);
         val scLog = gv.getValue(LOG_DECIDED, classOf[HashMap[Address, ListBuffer[RSM_SimCmd]]]);
         val appendLog = scLog.get(self).getOrElse(ListBuffer.empty[RSM_SimCmd]);
@@ -132,8 +136,12 @@ object SequenceConsensusTester {
   class SeqConsensusParent(init: Init[SeqConsensusParent]) extends ComponentDefinition {
 
     val (selfAddr, topology, correct, paxosClass, proxyInit) = init match {
-      case Init(s: Address, t: Set[Address]@unchecked, c: Set[Address]@unchecked, pClass: Class[ComponentDefinition]@unchecked,
-      m: ProxyInterceptorInit) => (s, t, c, pClass, m)
+      case Init(s: Address,
+                t: Set[Address] @unchecked,
+                c: Set[Address] @unchecked,
+                pClass: Class[ComponentDefinition] @unchecked,
+                m: ProxyInterceptorInit) =>
+        (s, t, c, pClass, m)
     };
 
     val timer = requires[Timer];
@@ -144,7 +152,8 @@ object SequenceConsensusTester {
 
     val leaderElection = create(classOf[ProvidedLeaderElection], Init[ProvidedLeaderElection](selfAddr))
     val seqConsensus = create(paxosClass, Init[ComponentDefinition](selfAddr, topology));
-    val interceptor = create(classOf[SeqConsensusInterceptor], Init[SeqConsensusInterceptor](selfAddr, proxyInit, topology, correct));
+    val interceptor =
+      create(classOf[SeqConsensusInterceptor], Init[SeqConsensusInterceptor](selfAddr, proxyInit, topology, correct));
 
     connect[Network](network -> pLink);
     connect[Timer](timer -> interceptor);
@@ -168,8 +177,16 @@ object SequenceConsensusTester {
     *
     *
     */
-
-  case class SeqConsensusValidation[CTYPE <: ComponentDefinition : TypeTag](numNodes: Int, numFailed: Int, numDisconnected: Int, latencyMin: Long, latencyMax: Long, splitNetworkDelay: Long, ble_Delay: Long, ble_Delta: Long, sc_Rate: Long, sc_maxProp: Int) {
+  case class SeqConsensusValidation[CTYPE <: ComponentDefinition: TypeTag](numNodes: Int,
+                                                                           numFailed: Int,
+                                                                           numDisconnected: Int,
+                                                                           latencyMin: Long,
+                                                                           latencyMax: Long,
+                                                                           splitNetworkDelay: Long,
+                                                                           ble_Delay: Long,
+                                                                           ble_Delta: Long,
+                                                                           sc_Rate: Long,
+                                                                           sc_maxProp: Int) {
 
     import Distributions._
 
@@ -183,7 +200,6 @@ object SequenceConsensusTester {
     val failed = sorted.takeRight(numFailed)
     val correct = sorted.take(numNodes - numFailed)
 
-
     def setupEvents(gv: GlobalView): Unit = {
       gv.setValue(LOG_DECIDED, HashMap.empty[Address, ListBuffer[SC_Decide]]);
       gv.setValue(LOG_PROPOSED, scala.collection.mutable.Set.empty[RSM_SimCmd]);
@@ -192,23 +208,44 @@ object SequenceConsensusTester {
     //Simulation Operations ----
     val setupOp = Op((_: Unit) => Setup(setupEvents _).build());
 
-    val setConstantLatencyNetwork = () => Op((maxDelay: java.lang.Long) => ChangeNetwork(NetworkModels.withConstantDelay(maxDelay)));
-    val setUniformLatencyNetwork = () => Op((minDelay: java.lang.Long, maxDelay: java.lang.Long) => ChangeNetwork(NetworkModels.withUniformRandomDelay(minDelay, maxDelay)));
+    val setConstantLatencyNetwork = () =>
+      Op((maxDelay: java.lang.Long) => ChangeNetwork(NetworkModels.withConstantDelay(maxDelay)));
+    val setUniformLatencyNetwork = () =>
+      Op(
+        (minDelay: java.lang.Long, maxDelay: java.lang.Long) =>
+          ChangeNetwork(NetworkModels.withUniformRandomDelay(minDelay, maxDelay))
+      );
 
-    val setUniformDelay = () => Op((minDelay: java.lang.Long, maxDelay: java.lang.Long) =>
-      ChangeNetwork(NetworkModels.withUniformRandomDelay(minDelay, maxDelay, SimulationScenario.getRandom)));
+    val setUniformDelay = () =>
+      Op(
+        (minDelay: java.lang.Long, maxDelay: java.lang.Long) =>
+          ChangeNetwork(NetworkModels.withUniformRandomDelay(minDelay, maxDelay, SimulationScenario.getRandom))
+      );
 
+    val splitNetwork = () =>
+      Op(
+        (_: Unit) =>
+          ChangeNetwork(
+            NetworkModels.withBinaryModel(
+              new SocketIdExtractor(),
+              NetworkModels.withUniformRandomDelay(latencyMin, latencyMax, SimulationScenario.getRandom),
+              NetworkModels.withConstantDelay(splitNetworkDelay),
+              new java.util.HashSet[Identifier](
+                topology
+                  .slice(topology.size - failed.size - numDisconnected, topology.size - failed.size + 1)
+                  .map(x => new SocketIdExtractor().extract(x))
+                  .toSet[Identifier]
+                  .asJava
+              )
+            )
+          )
+      );
 
-    val splitNetwork = () => Op((_: Unit) => ChangeNetwork(
-      NetworkModels.withBinaryModel(new SocketIdExtractor(),
-        NetworkModels.withUniformRandomDelay(latencyMin, latencyMax, SimulationScenario.getRandom),
-        NetworkModels.withConstantDelay(splitNetworkDelay),
-        new java.util.HashSet[Identifier](topology.slice(topology.size - failed.size - numDisconnected, topology.size - failed.size + 1).map(x => new SocketIdExtractor().extract(x)).toSet[Identifier].asJava))));
+    val killOP = Op { (self: Integer) =>
+      KillNode(sorted(self.toInt))
+    }
 
-    val killOP = Op { (self: Integer) => KillNode(sorted(self.toInt)) }
-
-
-    // Old code that was not compiling. 
+    // Old code that was not compiling.
     // TODO: Verify that the Map is not needed any longer...
     /*
     val startPaxos = Op((self: Integer) => {
@@ -221,17 +258,22 @@ object SequenceConsensusTester {
           "sc.simulation.rate" -> sc_Rate,
           "sc.simulation.maxProposals" -> sc_maxProp))
     });
-    */
+     */
 
     val startPaxos = Op { (self: Integer) =>
       val selfAddr = AddressUtils.toAddress(self);
-      StartNode(selfAddr, Init[SeqConsensusParent](selfAddr, topology.toSet, correct.toSet,
-        asJavaClass[CTYPE](typeOf[CTYPE]), ScheduleTriggers(selfAddr)()))
+      StartNode(selfAddr,
+                Init[SeqConsensusParent](selfAddr,
+                                         topology.toSet,
+                                         correct.toSet,
+                                         asJavaClass[CTYPE](typeOf[CTYPE]),
+                                         ScheduleTriggers(selfAddr)()))
     }
 
     def checkValidity(view: GlobalView): Boolean = {
       val proposed = view.getValue(LOG_PROPOSED, classOf[scala.collection.mutable.Set[RSM_SimCmd]]);
-      view.getValue(LOG_DECIDED, classOf[HashMap[Address, ListBuffer[RSM_SimCmd]]])
+      view
+        .getValue(LOG_DECIDED, classOf[HashMap[Address, ListBuffer[RSM_SimCmd]]])
         .forall(_._2.forall(x => proposed.contains(x)));
     }
 
@@ -239,7 +281,9 @@ object SequenceConsensusTester {
       val decided = view.getValue(LOG_DECIDED, classOf[mutable.HashMap[Address, ListBuffer[RSM_SimCmd]]])
       if (!decided.isEmpty) {
         val maxTpl = decided.maxBy(_._2.size);
-        return decided.forall { x => x._2.toList == maxTpl._2.slice(0, x._2.size).toList };
+        return decided.forall { x =>
+          x._2.toList == maxTpl._2.slice(0, x._2.size).toList
+        };
         //return decided.forall { x => x._2.toList == maxTpl._2.subList(0, x._2.size).toList };
       }
       return true;
@@ -250,40 +294,64 @@ object SequenceConsensusTester {
       val decided = view.getValue(LOG_DECIDED, classOf[mutable.HashMap[Address, ListBuffer[RSM_SimCmd]]])
 
       return correct.forall(p => decided.get(p).isDefined) &&
-        correct.forall(p => decided.get(p).get.toSet.subsetOf(proposed))
+        correct.forall(p => proposed.subsetOf(decided.get(p).get.toSet))
     }
 
     val prop1 =
       Property("Validity")
-        .addValidator(SimValidator(checkValidity, 500000,
-          "Every value decided in a sequence has been previously proposed",
-          "There exist values decided in a sequence that were not previously proposed")).build();
+        .addValidator(
+          SimValidator(
+            checkValidity,
+            500000,
+            "Every value decided in a sequence has been previously proposed",
+            "There exist values decided in a sequence that were not previously proposed"
+          )
+        )
+        .build();
 
     val prop2 =
       Property("Uniform Agreement")
-        .addValidator(SimValidator(checkAggreement, 500000,
-          "For every two sequences decided across different processes, one is a prefix of the other",
-          "There exist at least one decided sequence which is not a prefix of another")).build();
+        .addValidator(
+          SimValidator(
+            checkAggreement,
+            500000,
+            "For every two sequences decided across different processes, one is a prefix of the other",
+            "There exist at least one decided sequence which is not a prefix of another"
+          )
+        )
+        .build();
 
     //    val prop3 =
     //      Property("Integrity")
     //        .addValidator(SimValidator( checkIntegrity, 500000,
     //          "Every decided sequence is a strict prefix of next decided sequence by a process",
     //          "Not every decided sequence is a strict prefix of the next decided sequence by a process")).build();
-        
+
     val prop4 =
-    Property("Completeness-Termination")
-      .addValidator(SimValidator(checkCompleteness, 500000,
-        "If a command is proposed an infinite number of times by a correct process then it is eventually included at least once in a decided sequence by every correct process",
-        "There exist commands proposed an infinite number of times by a correct process which never get included in a process' decided sequence")).build();
+      Property("Completeness-Termination")
+        .addValidator(
+          SimValidator(
+            checkCompleteness,
+            500000,
+            "If a command is proposed an infinite number of times by a correct process then it is eventually included at least once in a decided sequence by every correct process",
+            "There exist commands proposed an infinite number of times by a correct process which never get included in a process' decided sequence"
+          )
+        )
+        .build();
 
     val scenario =
-      ValidationSimulation(prop1, prop2, prop4) inParallel(
-        raise(1, setupOp).arrival(Distributions.constant(0)), raise(1, setUniformDelay(), constant(latencyMin), constant(latencyMax)).arrival(constant(0)),
-        raise(numNodes, startPaxos, 1.toN).arrival(constant(0))) andThen 4000.millis afterTermination
-        raise(numFailed, killOP, Distributions.intSeq(((numNodes - numFailed) until numNodes))).arrival(constant(0)) andThen 5000.millis afterTermination
+      ValidationSimulation(prop1, prop2, prop4) inParallel (raise(1, setupOp).arrival(Distributions.constant(0)), raise(
+        1,
+        setUniformDelay(),
+        constant(latencyMin),
+        constant(latencyMax)
+      ).arrival(constant(0)),
+      raise(numNodes, startPaxos, 1.toN).arrival(constant(0))) andThen 4000.millis afterTermination
+        raise(numFailed, killOP, Distributions.intSeq(((numNodes - numFailed) until numNodes)))
+          .arrival(constant(0)) andThen 5000.millis afterTermination
         raise(1, splitNetwork()).arrival(constant(0)) andThen 4000.millis afterTermination
-        raise(1, setUniformDelay(), constant(latencyMin), constant(latencyMax)).arrival(constant(0)) andThen 10000000l.millis afterTermination Terminate;
+        raise(1, setUniformDelay(), constant(latencyMin), constant(latencyMax))
+          .arrival(constant(0)) andThen 10000000L.millis afterTermination Terminate;
   }
 
 }

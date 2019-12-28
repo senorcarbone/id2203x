@@ -15,7 +15,7 @@ import se.sics.kompics.sl.simulator.{Op, StartNode, _}
 import se.sics.kompics.sl.{ComponentDefinition, Init, _}
 import se.sics.kompics.timer.Timer
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.collection.mutable
 import scala.collection.mutable._
 import scala.concurrent.duration._
@@ -27,12 +27,11 @@ object BLETester {
 
   val GLOBAL_STATE: String = "simulation.delivered"
 
-  def apply[C <: ComponentDefinition : TypeTag](): collection.Iterable[ValidationGroup] = {
+  def apply[C <: ComponentDefinition: TypeTag](): collection.Iterable[ValidationGroup] = {
     val seed = 123;
     SimulationScenario.setSeed(seed);
-    ValidationSimulation.runAndValidate(BLEValidation(asJavaClass[C](typeOf[C]), 15, 3, 100l, 50, 200).scenario);
+    ValidationSimulation.runAndValidate(BLEValidation(asJavaClass[C](typeOf[C]), 15, 3, 100L, 50, 200).scenario);
   }
-
 
   class BLEInterceptor(init: Init[BLEInterceptor]) extends ComponentDefinition {
 
@@ -85,7 +84,12 @@ object BLETester {
     * BLE2: Ballot Monotonicity: Every new leader election should yield a monotonically increasing ballot number.
     *
     */
-  case class BLEValidation(compClass: Class[_ <: ComponentDefinition], numNodes: Int, discNodes: Int, delay: Long, delta: Long, maxLinkDelay: Long) {
+  case class BLEValidation(compClass: Class[_ <: ComponentDefinition],
+                           numNodes: Int,
+                           discNodes: Int,
+                           delay: Long,
+                           delta: Long,
+                           maxLinkDelay: Long) {
 
     import Distributions._
 
@@ -107,7 +111,6 @@ object BLETester {
       myUniqueSet.toArray;
     }
 
-
     def validateCompleteness(gv: GlobalView): Boolean = {
       val globalState = gv.getValue(BLETester.GLOBAL_STATE, classOf[mutable.HashMap[Address, ListBuffer[BLE_Leader]]]);
 
@@ -115,7 +118,7 @@ object BLETester {
         val elected = globalState.get(z);
         elected match {
           case Some(elections) => correct.contains(elections.last.leader)
-          case None => false
+          case None            => false
         }
       });
     }
@@ -138,43 +141,83 @@ object BLETester {
     def validateMonotonicity(gv: GlobalView): Boolean = {
       val globalState = gv.getValue(BLETester.GLOBAL_STATE, classOf[mutable.HashMap[Address, ListBuffer[BLE_Leader]]]);
 
-      correct.filter(p => globalState.get(p).isDefined).forall(z => {
-        globalState.get(z).get.foldLeft((0, true): (Long, Boolean))((b, next) => {
-          b match {
-            case (prev, false) => b;
-            case (prev, true) =>
-              if (prev < next.ballot) (next.ballot, true) else (next.ballot, false);
-          }
-        })._2
-      })
+      correct
+        .filter(p => globalState.get(p).isDefined)
+        .forall(z => {
+          globalState
+            .get(z)
+            .get
+            .foldLeft((0, true): (Long, Boolean))((b, next) => {
+              b match {
+                case (prev, false) => b;
+                case (prev, true) =>
+                  if (prev < next.ballot) (next.ballot, true) else (next.ballot, false);
+              }
+            })
+            ._2
+        })
     }
 
     val prop1: ValidationGroup = Property("Completeness")
-      .addValidator(SimValidator(gv =>
-        validateCompleteness(gv), 100000l,
-        "Eventually every correct process elects some correct process as long as a majority is correct",
-        "There is at least one correct process which does not elect any correct process given a correct majority of processes")).build()
+      .addValidator(
+        SimValidator(
+          gv => validateCompleteness(gv),
+          100000L,
+          "Eventually every correct process elects some correct process as long as a majority is correct",
+          "There is at least one correct process which does not elect any correct process given a correct majority of processes"
+        )
+      )
+      .build()
 
     val prop2: ValidationGroup = Property("Eventual Agreement")
-      .addValidator(SimValidator(gv =>
-        validateAgreement(gv), 100000l,
-        "Eventually no two correct processes elect different correct processes",
-        "Different processes are eventually elected by at least two correct processes")).build()
+      .addValidator(
+        SimValidator(
+          gv => validateAgreement(gv),
+          100000L,
+          "Eventually no two correct processes elect different correct processes",
+          "Different processes are eventually elected by at least two correct processes"
+        )
+      )
+      .build()
 
     val prop3: ValidationGroup = Property("Monotonic Unique Ballots")
-      .addValidator(SimValidator(gv => validateMonotonicity(gv), 100000l,
-        "Ballot numbers of consecutively elected processes should be unique and monotonically increasing",
-        "Monotonicity or uniqueness are violated for consecutively elected processes")).build();
+      .addValidator(
+        SimValidator(
+          gv => validateMonotonicity(gv),
+          100000L,
+          "Ballot numbers of consecutively elected processes should be unique and monotonically increasing",
+          "Monotonicity or uniqueness are violated for consecutively elected processes"
+        )
+      )
+      .build();
 
     //Simulation Operations ----
-    val setupOp = Op((_: Unit) => Setup((gv: GlobalView) => gv.setValue(BLETester.GLOBAL_STATE, mutable.HashMap.empty[Address, ListBuffer[BLE_Leader]])).build());
+    val setupOp = Op(
+      (_: Unit) =>
+        Setup(
+          (gv: GlobalView) =>
+            gv.setValue(BLETester.GLOBAL_STATE, mutable.HashMap.empty[Address, ListBuffer[BLE_Leader]])
+        ).build()
+    );
 
-    val setUniformDelay = () => Op((maxDelay: java.lang.Long) =>
-      ChangeNetwork(NetworkModels.withUniformRandomDelay(0, maxDelay, SimulationScenario.getRandom)));
+    val setUniformDelay = () =>
+      Op(
+        (maxDelay: java.lang.Long) =>
+          ChangeNetwork(NetworkModels.withUniformRandomDelay(0, maxDelay, SimulationScenario.getRandom))
+      );
 
-    val delayOp = Op((_: Unit) => ChangeNetwork(withDisconnectedModel(
-      new SocketIdExtractor(), NetworkModels.withUniformRandomDelay(5, maxLinkDelay, SimulationScenario.getRandom),
-      new java.util.HashSet[Identifier](topology.slice(0, discNodes).map(x => new SocketIdExtractor().extract(x)).toSet[Identifier].asJava))));
+    val delayOp = Op(
+      (_: Unit) =>
+        ChangeNetwork(
+          withDisconnectedModel(
+            new SocketIdExtractor(),
+            NetworkModels.withUniformRandomDelay(5, maxLinkDelay, SimulationScenario.getRandom),
+            new java.util.HashSet[Identifier](
+              topology.slice(0, discNodes).map(x => new SocketIdExtractor().extract(x)).toSet[Identifier].asJava
+            )
+          )
+        )
+    );
 
     /*
     val startBLEs = Op((self: Integer) => StartNode(AddressUtils.toAddress(self),
@@ -184,18 +227,28 @@ object BLETester {
 
     val startBLEs = Op { (self: Integer) =>
       val selfAddr = AddressUtils.toAddress(self);
-      StartNode(selfAddr, Init[BLEParent](selfAddr, compClass))
+      StartNode(
+        selfAddr,
+        Init[BLEParent](selfAddr, compClass),
+        Map("ble.simulation.topology" -> topology, "ble.simulation.delay" -> delay, "ble.simulation.delta" -> delta).toString
+      )
     }
 
-    val killOP = Op { (self: Integer) => KillNode(sorted(self.toInt)) }
+    val killOP = Op { (self: Integer) =>
+      KillNode(sorted(self.toInt))
+    }
 
     val scenario =
-      ValidationSimulation(prop1, prop2, prop3) inParallel(
-        raise(1, setupOp).arrival(Distributions.constant(0)), raise(1, setUniformDelay(), constant(maxLinkDelay)).arrival(constant(0)),
-        raise(numNodes, startBLEs, 1.toN).arrival(constant(0))) andThen 10000.millis afterTermination
+      ValidationSimulation(prop1, prop2, prop3) inParallel (raise(1, setupOp).arrival(Distributions.constant(0)), raise(
+        1,
+        setUniformDelay(),
+        constant(maxLinkDelay)
+      ).arrival(constant(0)),
+      raise(numNodes, startBLEs, 1.toN).arrival(constant(0))) andThen 10000.millis afterTermination
         raise(1, delayOp).arrival(constant(0)) andThen 500.millis afterTermination
         raise(1, setUniformDelay(), constant(0)).arrival(constant(0)) andThen 10000.millis afterTermination
-        raise(discNodes, killOP, Distributions.intSeq(((numNodes - discNodes) until numNodes))).arrival(constant(0)) andThen 10000000l.millis afterTermination Terminate;
+        raise(discNodes, killOP, Distributions.intSeq(((numNodes - discNodes) until numNodes)))
+          .arrival(constant(0)) andThen 10000000L.millis afterTermination Terminate;
   }
 
 }

@@ -18,7 +18,7 @@ object TesterPrimitives {
 
   case class LEHeartbeatResp(round: Long, ballot: Long) extends KompicsEvent;
 
-  private val ballotOne = 0x0100000000l;
+  private val ballotOne = 0X0100000000L;
 
   private def ballotFromNAddress(n: Int, adr: Address): Long = {
     val nBytes = com.google.common.primitives.Ints.toByteArray(n);
@@ -36,8 +36,7 @@ object TesterPrimitives {
   private def incrementBallot(ballot: Long): Long = {
     ballot + ballotOne
   }
-  
-  
+
   class ProvidedBroadcast(init: Init[ProvidedBroadcast]) extends ComponentDefinition {
     val pp2p = requires[PerfectLink];
     val beb = provides[BestEffortBroadcast];
@@ -54,8 +53,7 @@ object TesterPrimitives {
         trigger(BEB_Deliver(src, payload) -> beb);
       }
     }
-   }                
-  
+  }
 
   class ProvidedLeaderElection(init: Init[ProvidedLeaderElection]) extends ComponentDefinition {
 
@@ -73,7 +71,7 @@ object TesterPrimitives {
     private var period = cfg.getValue[Long]("ble.simulation.delay");
     private val ballots = mutable.Map.empty[Address, Long];
 
-    private var round = 0l;
+    private var round = 0L;
     private var ballot = ballotFromNAddress(0, self);
 
     private var leader: Option[(Long, Address)] = None;
@@ -85,15 +83,15 @@ object TesterPrimitives {
       trigger(scheduledTimeout -> timer);
     }
 
-    private def makeLeader(topProcess: (Long, Address)) {
+    private def makeLeader(topProcess: (Long, Address)): Unit = {
       highestBallot = topProcess._1;
       leader = Some(topProcess)
       trigger(BLE_Leader(topProcess._2, topProcess._1) -> ble);
     }
 
-    private def checkLeader() {
+    private def checkLeader(): Unit = {
       if ((ballots.size + 1) < majority) {
-        return ; // we can't talk to enough people to even try to elect a leader...just wait
+        return; // we can't talk to enough people to even try to elect a leader...just wait
       }
       val topProcess = ballots.foldLeft((ballot, self)) {
         case (acc, (p, n)) if (n > acc._1)  => (n -> p)

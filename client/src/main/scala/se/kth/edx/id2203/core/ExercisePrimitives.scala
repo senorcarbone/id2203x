@@ -29,7 +29,8 @@ object ExercisePrimitives {
 
     case class PerfectLinkInit(selfAddr: Address) extends Init[PerfectP2PLink];
 
-    case class PerfectLinkMessage(src: Address, dest: Address, payload: KompicsEvent) extends TMessage(THeader(src, dest, Transport.TCP));
+    case class PerfectLinkMessage(src: Address, dest: Address, payload: KompicsEvent)
+        extends TMessage(THeader(src, dest, Transport.TCP));
   }
 
   class PerfectP2PLink(pp2pInit: PerfectLinkInit) extends ComponentDefinition {
@@ -71,7 +72,7 @@ object ExercisePrimitives {
 
     val lsn = collection.mutable.Map[Address, Int]().withDefaultValue(0);
     val next = collection.mutable.Map[Address, Int]().withDefaultValue(1);
-    
+
     val pending = collection.mutable.Map.empty[Address, SortedMap[Int, KompicsEvent]];
 
     fifoLink uponEvent {
@@ -87,21 +88,20 @@ object ExercisePrimitives {
         if (num == next(p)) {
           next(p) += 1;
           trigger(PL_Deliver(p, payload) -> fifoLink);
-          
+
           //deliver possible pending messages
-          
+
           pending.get(p) match {
             case Some(entries) =>
-              while(entries.contains(next(p))){
+              while (entries.contains(next(p))) {
                 trigger(PL_Deliver(p, entries.get(next(p)).get) -> fifoLink);
                 val newMap: SortedMap[Int, KompicsEvent] = (entries - next(p)).to(SortedMap)
                 pending += p -> newMap
                 next(p) += 1;
               }
-            case None => 
+            case None =>
           }
-        }
-        else if (num > next(p)) {
+        } else if (num > next(p)) {
           pending.get(p) match {
             case Some(entries) =>
               pending += p -> (entries + (num -> payload));
@@ -110,8 +110,7 @@ object ExercisePrimitives {
           }
 //          println(s"${System.currentTimeMillis()} :: ${AddressUtils.toRank(p)} -> " +
 //            s"${AddressUtils.toRank(self)} got ${num} > ${next(p)} - #pending (${pending(p).size})");
-        }
-        else {
+        } else {
 //          println(s"${System.currentTimeMillis()} :: ${AddressUtils.toRank(p)} -> " +
 //            s"${AddressUtils.toRank(self)} got duplicate:  ${num} < ${next(p)} - #pending (${pending(p).size}) : ${pending(p)}");
 
@@ -131,7 +130,8 @@ object ExercisePrimitives {
       vc = vc + ((addr, value));
     }
 
-    def <=(that: VectorClock): Boolean = vc.foldLeft[Boolean](true)((leq, entry) => leq & (entry._2 <= that.vc.getOrElse(entry._1, entry._2)))
+    def <=(that: VectorClock): Boolean =
+      vc.foldLeft[Boolean](true)((leq, entry) => leq & (entry._2 <= that.vc.getOrElse(entry._1, entry._2)))
 
   }
 
