@@ -140,7 +140,7 @@ object ValidationUtils {
       }
       sc.simulate(classOf[LauncherComp]);
       val tcxtl = Thread.currentThread().getContextClassLoader();
-      val ois = new ClassLoaderObjectInputStream(tcxtl, new FileInputStream("/tmp/observer"));
+      val ois = new ClassLoaderObjectInputStream(tcxtl, new FileInputStream(simulationFile));
       val properties = ois.readObject().asInstanceOf[scala.collection.immutable.Set[ValidationGroup]];
       ois.close();
       return properties

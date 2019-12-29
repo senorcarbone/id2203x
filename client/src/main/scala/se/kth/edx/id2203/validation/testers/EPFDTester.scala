@@ -201,7 +201,8 @@ object EPFDTester {
 
     val startEPFDs = Op { (self: Integer) =>
       val selfAddr = AddressUtils.toAddress(self);
-      val map = scala.collection.immutable.Map("epfd.simulation.topology" -> topology, "epfd.simulation.delay" -> delay, "epfd.simulation.delta" -> delta)
+      val map = scala.collection.immutable
+        .Map("epfd.simulation.topology" -> topology, "epfd.simulation.delay" -> delay, "epfd.simulation.delta" -> delta)
       StartNode(selfAddr, Init[EPFDParent](selfAddr, compClass), map)
     }
 

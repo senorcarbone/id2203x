@@ -221,7 +221,8 @@ object BLETester {
 
     val startBLEs = Op { (self: Integer) =>
       val selfAddr = AddressUtils.toAddress(self);
-      val map = scala.collection.immutable.Map("ble.simulation.topology" -> topology, "ble.simulation.delay" -> delay, "ble.simulation.delta" -> delta)
+      val map = scala.collection.immutable
+        .Map("ble.simulation.topology" -> topology, "ble.simulation.delay" -> delay, "ble.simulation.delta" -> delta)
       StartNode(
         selfAddr,
         Init[BLEParent](selfAddr, compClass),

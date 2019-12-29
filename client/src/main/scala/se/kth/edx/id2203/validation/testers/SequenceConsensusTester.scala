@@ -245,29 +245,22 @@ object SequenceConsensusTester {
       KillNode(sorted(self.toInt))
     }
 
-    // Old code that was not compiling.
-    // TODO: Verify that the Map is not needed any longer...
-    /*
-    val startPaxos = Op((self: Integer) => {
-      StartNode(toAddress(self), Init[SeqConsensusParent](toAddress(self),
-        topology.toSet, correct.toSet,
-        asJavaClass[CTYPE](typeOf[CTYPE]), ScheduleTriggers(toAddress(self))()),
-        Map("ble.simulation.topology" -> topology.toSet,
-          "ble.simulation.delay" -> ble_Delay,
-          "ble.simulation.delta" -> ble_Delta,
-          "sc.simulation.rate" -> sc_Rate,
-          "sc.simulation.maxProposals" -> sc_maxProp))
-    });
-     */
-
     val startPaxos = Op { (self: Integer) =>
       val selfAddr = AddressUtils.toAddress(self);
+      val map = scala.collection.immutable.Map(
+        "ble.simulation.topology" -> topology.toSet,
+        "ble.simulation.delay" -> ble_Delay,
+        "ble.simulation.delta" -> ble_Delta,
+        "sc.simulation.rate" -> sc_Rate,
+        "sc.simulation.maxProposals" -> sc_maxProp
+      )
       StartNode(selfAddr,
                 Init[SeqConsensusParent](selfAddr,
                                          topology.toSet,
                                          correct.toSet,
                                          asJavaClass[CTYPE](typeOf[CTYPE]),
-                                         ScheduleTriggers(selfAddr)()))
+                                         ScheduleTriggers(selfAddr)()),
+                map)
     }
 
     def checkValidity(view: GlobalView): Boolean = {
