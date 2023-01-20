@@ -103,13 +103,13 @@ class GossipLeaderElection(init: Init[GossipLeaderElection]) extends ComponentDe
   }
 
   ctrl uponEvent {
-    case _: Start => handle {
+    case _: Start => {
       startTimer(period);
     }
   }
 
   timer uponEvent {
-    case CheckTimeout(_) => handle {
+    case CheckTimeout(_) => {
       checkLeader();
 
       round += 1;
@@ -124,13 +124,13 @@ class GossipLeaderElection(init: Init[GossipLeaderElection]) extends ComponentDe
   }
 
   pl uponEvent {
-    case PL_Deliver(src, HeartbeatReq(r, hb)) => handle {
+    case PL_Deliver(src, HeartbeatReq(r, hb)) => {
       if (hb > highestBallot) {
         highestBallot = hb;
       }
       trigger(PL_Send(src, HeartbeatResp(r, ballot)) -> pl);
     }
-    case PL_Deliver(src, HeartbeatResp(r, b)) => handle {
+    case PL_Deliver(src, HeartbeatResp(r, b)) => {
       if (r == round) {
         ballots += (src -> b)
       } else {

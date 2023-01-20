@@ -24,7 +24,7 @@ object ReadImposeWriteConsultMajority {
    * This augments tuples with comparison operators implicitly, which you can use in your code.
    * examples: (1,2) > (1,4) yields 'false' and  (5,4) <= (7,4) yields 'true'
    */
-  implicit def addComparators[A](x: A)(implicit o: math.Ordering[A]): o.Ops = o.mkOrderingOps(x);
+  implicit def addComparators[A](x: A)(implicit o: math.Ordering[A]): o.OrderingOps = o.mkOrderingOps(x);
 
 }
 
@@ -55,14 +55,14 @@ class ReadImposeWriteConsultMajority(init: Init[ReadImposeWriteConsultMajority])
   //event handlers
 
   nnar uponEvent {
-    case AR_Read_Request() => handle {
+    case AR_Read_Request() => {
       rid = rid + 1;
       acks = 0;
       readlist.clear();
       reading = true;
       trigger(BEB_Broadcast(READ(rid)) -> beb)
     };
-    case AR_Write_Request(wval) => handle {
+    case AR_Write_Request(wval) => {
       rid = rid + 1;
       writeval = Some(wval);
       acks = 0;
@@ -72,10 +72,10 @@ class ReadImposeWriteConsultMajority(init: Init[ReadImposeWriteConsultMajority])
   }
 
   beb uponEvent {
-    case BEB_Deliver(src, READ(readID)) => handle {
+    case BEB_Deliver(src, READ(readID)) => {
       trigger(PL_Send(src, VALUE(readID, ts, wr, value)) -> pLink);
     }
-    case BEB_Deliver(src, w: WRITE) => handle {
+    case BEB_Deliver(src, w: WRITE) => {
       if ((w.ts, w.wr) > (ts, wr)) {
         ts = w.ts;
         wr = w.wr;
@@ -86,7 +86,7 @@ class ReadImposeWriteConsultMajority(init: Init[ReadImposeWriteConsultMajority])
   }
 
   pLink uponEvent {
-    case PL_Deliver(src, v: VALUE) => handle {
+    case PL_Deliver(src, v: VALUE) => {
       if (v.rid == rid) {
         readlist += (src -> (v.ts, v.wr, v.value));
         if (readlist.size > n / 2) {
@@ -101,7 +101,7 @@ class ReadImposeWriteConsultMajority(init: Init[ReadImposeWriteConsultMajority])
         }
       }
     }
-    case PL_Deliver(src, v: ACK) => handle {
+    case PL_Deliver(src, v: ACK) => {
       if (v.rid == rid) {
         acks = acks + 1;
         if (acks > n / 2) {

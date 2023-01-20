@@ -2,7 +2,7 @@ package se.kth.edx.id2203.core
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import se.sics.kompics.network.{ Address, Header, Msg, Transport };
+import se.sics.kompics.network.{Address, Header, Msg, Transport};
 import se.sics.kompics.KompicsEvent;
 
 final class TAddress(val isa: InetSocketAddress) extends Address with Serializable {
@@ -22,11 +22,11 @@ final class TAddress(val isa: InetSocketAddress) extends Address with Serializab
   override def equals(obj: scala.Any): Boolean = {
     obj match {
       case other: TAddress => isa.getAddress.equals(other.isa.getAddress) && isa.getPort == other.isa.getPort
-      case _ => false
+      case _               => false
     }
   }
-  
-  override def toString() : String = {
+
+  override def toString(): String = {
     s"TAddress(${isa.toString})"
   }
 }

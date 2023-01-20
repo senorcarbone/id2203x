@@ -11,15 +11,15 @@ object SimulationPrimitives {
   case class ProxyInterceptorInit(triggers: Iterable[(Long, KompicsEvent)]);
 
   trait ProxyInterceptor[P <: PortType] extends ComponentDefinition {
-    
+
     case class TriggerTimeout(timeout: ScheduleTimeout, event: KompicsEvent) extends Timeout(timeout)
-    
+
     val timer = requires[Timer];
-    
+
     def getInterceptedPort(): PositivePort[P]
 
     def getSelfAddress(): Address
-    
+
     def initialize(init: ProxyInterceptorInit) = {
       init.triggers.foreach(scheduleTrigger(_));
     }
@@ -29,17 +29,18 @@ object SimulationPrimitives {
       timeout.setTimeoutEvent(TriggerTimeout(timeout, triggerEvent._2));
       trigger(timeout -> timer);
     }
-    
+
     timer uponEvent {
-      case TriggerTimeout(_, evt) => handle {
-      trigger(evt -> getInterceptedPort());
+      case TriggerTimeout(_, evt) => {
+        trigger(evt -> getInterceptedPort());
       }
     }
   }
 
-    object ScheduleTriggers{
-      def apply(tr: (Long, KompicsEvent)*) : ProxyInterceptorInit = ProxyInterceptorInit(tr.toList)
-      def apply(nodeAddr: Address)(tr: (Address, Long, KompicsEvent)*) : ProxyInterceptorInit = ProxyInterceptorInit(tr.filter(_._1 == nodeAddr).map(tpl => (tpl._2, tpl._3)).toList)
-    }
-  
+  object ScheduleTriggers {
+    def apply(tr: (Long, KompicsEvent)*): ProxyInterceptorInit = ProxyInterceptorInit(tr.toList)
+    def apply(nodeAddr: Address)(tr: (Address, Long, KompicsEvent)*): ProxyInterceptorInit =
+      ProxyInterceptorInit(tr.filter(_._1 == nodeAddr).map(tpl => (tpl._2, tpl._3)).toList)
+  }
+
 }

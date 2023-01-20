@@ -1,7 +1,7 @@
 package se.kth.edx.id2203.tutorial
 
 import se.sics.kompics.sl._;
-import se.sics.kompics.{ Kompics, Start, Init };
+import se.sics.kompics.{Init, Kompics, Start};
 import se.sics.kompics.KompicsEvent;
 
 //-----------------------------------------------------
@@ -24,34 +24,34 @@ class Pinger extends ComponentDefinition {
   val ppp = requires(PingPongPort);
 
   //STEP 3B: Define event handlers that implement service logic
-  ctrl uponEvent{
-    case _: Start => handle {
+  ctrl uponEvent {
+    case _: Start => {
       print("Ping")
       trigger(Ping, ppp);
     }
   }
-  ppp uponEvent{
-    case Pong => handle {
+  ppp uponEvent {
+    case Pong => {
       print("Ping")
       trigger(Ping, ppp);
     }
   }
 };
-class Ponger extends ComponentDefinition{
+class Ponger extends ComponentDefinition {
   //STEP 3A : Bind service interfaces
   val ppn = provides(PingPongPort);
 
   /*
   Insert missing declaration here
-  */
+   */
   var num_pings = 0;
 
-  //STEP 3B: Define event handlers that implement service logic 
-  ppn uponEvent{
-    case Ping => handle{
+  //STEP 3B: Define event handlers that implement service logic
+  ppn uponEvent {
+    case Ping => {
       /*
       Insert missing handler logic here
-      */
+       */
       num_pings = num_pings + 1;
       if (num_pings % 3 == 0) println("PONG");
 
@@ -63,7 +63,7 @@ class Ponger extends ComponentDefinition{
 //-----------------------------------------------------
 //STEP 4: Instantiate components and execute the service
 
-class PingService extends ComponentDefinition{
+class PingService extends ComponentDefinition {
   //STEP 4A: Instantiate Components
   val ponger = create(classOf[Ponger], Init.NONE);
   val pinger = create(classOf[Pinger], Init.NONE);
@@ -71,14 +71,13 @@ class PingService extends ComponentDefinition{
 };
 
 //STEP 4C: Execute the service
-object PingPongApp extends App{
+object PingPongApp extends App {
   Kompics.shutdown();
   Kompics.createAndStart(classOf[PingService]);
-  try{
+  try {
     Thread.sleep(200);
-  }
-  catch{
-    case e:InterruptedException => System.exit(1);
+  } catch {
+    case e: InterruptedException => System.exit(1);
   }
   Kompics.shutdown();
 

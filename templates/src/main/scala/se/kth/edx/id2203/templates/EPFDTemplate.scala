@@ -48,13 +48,13 @@ class EPFD(epfdInit: Init[EPFD]) extends ComponentDefinition {
 
   //EPFD event handlers
   ctrl uponEvent {
-    case _: Start => handle {
+    case _: Start => {
       startTimer(period);
     }
   }
 
   timer uponEvent {
-    case CheckTimeout(_) => handle {
+    case CheckTimeout(_) => {
       if (!alive.intersect(suspected).isEmpty) {
         period = period + delta;
       }
@@ -76,7 +76,7 @@ class EPFD(epfdInit: Init[EPFD]) extends ComponentDefinition {
   }
 
   pLink uponEvent {
-    case PL_Deliver(src, Heartbeat()) => handle {
+    case PL_Deliver(src, Heartbeat()) => {
       alive = alive + src;
     }
   }

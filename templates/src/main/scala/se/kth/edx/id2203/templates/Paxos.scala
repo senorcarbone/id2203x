@@ -26,7 +26,7 @@ object Paxos {
    * This augments tuples with comparison operators implicitly, which you can use in your code, for convenience.
    * examples: (1,2) > (1,4) yields 'false' and  (5,4) <= (7,4) yields 'true'
    */
-  implicit def addComparators[A](x: A)(implicit o: math.Ordering[A]): o.Ops = o.mkOrderingOps(x);
+  implicit def addComparators[A](x: A)(implicit o: math.Ordering[A]): o.OrderingOps = o.mkOrderingOps(x);
 
 }
 
@@ -66,7 +66,7 @@ class Paxos(paxosInit: Init[Paxos]) extends ComponentDefinition {
   }
 
   consensus uponEvent {
-    case C_Propose(value) => handle {
+    case C_Propose(value) => {
       proposedValue = Some(value);
       propose();
     }
@@ -74,7 +74,7 @@ class Paxos(paxosInit: Init[Paxos]) extends ComponentDefinition {
 
   beb uponEvent {
 
-    case BEB_Deliver(src, prep: Prepare) => handle {
+    case BEB_Deliver(src, prep: Prepare) => {
       if (promisedBallot < prep.proposalBallot) {
         promisedBallot = prep.proposalBallot;
         trigger(PL_Send(src, Promise(promisedBallot, acceptedBallot, acceptedValue)) -> plink);
@@ -83,7 +83,7 @@ class Paxos(paxosInit: Init[Paxos]) extends ComponentDefinition {
       }
     };
 
-    case BEB_Deliver(src, acc: Accept) => handle {
+    case BEB_Deliver(src, acc: Accept) => {
 
       if (promisedBallot <= acc.acceptBallot) {
 
@@ -96,7 +96,7 @@ class Paxos(paxosInit: Init[Paxos]) extends ComponentDefinition {
       }
     };
 
-    case BEB_Deliver(src, dec: Decided) => handle {
+    case BEB_Deliver(src, dec: Decided) => {
       if (!decided) {
         trigger(C_Decide(dec.decidedValue) -> consensus);
         decided = true;
@@ -106,7 +106,7 @@ class Paxos(paxosInit: Init[Paxos]) extends ComponentDefinition {
 
   plink uponEvent {
 
-    case PL_Deliver(src, prepAck: Promise) => handle {
+    case PL_Deliver(src, prepAck: Promise) => {
       if ((round, rank) == prepAck.promiseBallot) {
         promises += (prepAck.acceptedBallot -> prepAck.acceptedValue);
         if (promises.size > (numProcesses + 1) / 2) {
@@ -116,7 +116,7 @@ class Paxos(paxosInit: Init[Paxos]) extends ComponentDefinition {
       }
     };
 
-    case PL_Deliver(src, accAck: Accepted) => handle {
+    case PL_Deliver(src, accAck: Accepted) => {
       if (promisedBallot == accAck.acceptedBallot) {
         numOfAccepts = numOfAccepts + 1;
         if (numOfAccepts == (numProcesses + 1) / 2) {
@@ -125,7 +125,7 @@ class Paxos(paxosInit: Init[Paxos]) extends ComponentDefinition {
       }
     };
 
-    case PL_Deliver(src, nack: Nack) => handle {
+    case PL_Deliver(src, nack: Nack) => {
 
       if ((round, rank) == nack.ballot) {
         propose(); // retry

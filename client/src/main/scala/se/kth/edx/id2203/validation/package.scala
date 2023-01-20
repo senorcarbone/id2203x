@@ -1,12 +1,12 @@
 package se.kth.edx.id2203
 
-import java.io.{ File, FileOutputStream, PrintStream }
+import java.io.{File, FileOutputStream, PrintStream}
 
 import se.kth.edx.id2203.validation.ValidationUtils._
 import se.kth.edx.id2203.validation.ValidationUtils.ValidationSimulation._
 import se.kth.edx.id2203.validation.testers._
 import se.sics.kompics.sl._
-import se.sics.kompics.{ ComponentDefinition => _, Port => _ }
+import se.sics.kompics.{ComponentDefinition => _, Port => _}
 import spray.json.DefaultJsonProtocol._
 import spray.json._
 
@@ -76,8 +76,8 @@ package object validation {
     val pso = new PrintStream(outFile);
     System.setOut(pso);
     System.setErr(pso);
-    Console.withOut(System.out) _;
-    Console.withErr(System.err) _;
+    val _ = Console.withOut(System.out) _;
+    val _ = Console.withErr(System.err) _;
     outputRedirected = true;
   }
 
@@ -90,8 +90,8 @@ package object validation {
       //System.err.close(); // should be the same here
       System.setOut(defaultOutput);
       System.setErr(defaultError);
-      Console.withOut(System.out) _;
-      Console.withErr(System.err) _;
+      val _ = Console.withOut(System.out) _;
+      val _ = Console.withErr(System.err) _;
       outputRedirected = false;
     }
   }
@@ -100,7 +100,7 @@ package object validation {
     outToFile();
     validateAndPrint("Sequence Consensus", SequenceConsensusTester[SCTYPE]())
   }
-  
+
   def checkBallotLE[BLETYPE <: ComponentDefinition: TypeTag](): Boolean = {
     outToFile();
     validateAndPrint("Ballot Leader Election", BLETester[BLETYPE]())
@@ -121,7 +121,9 @@ package object validation {
     validateAndPrint("Reliable Broadcast", RBTester[BEBTYPE, RBTYPE]())
   }
 
-  def checkCRB[BEBTYPE <: ComponentDefinition: TypeTag, RBTYPE <: ComponentDefinition: TypeTag, CRBTYPE <: ComponentDefinition: TypeTag](): Boolean = {
+  def checkCRB[BEBTYPE <: ComponentDefinition: TypeTag,
+               RBTYPE <: ComponentDefinition: TypeTag,
+               CRBTYPE <: ComponentDefinition: TypeTag](): Boolean = {
     outToFile();
     validateAndPrint("Causal Order Reliable Broadcast", CRBTester[BEBTYPE, RBTYPE, CRBTYPE]())
   }
@@ -139,7 +141,9 @@ package object validation {
   def checkExample[ACTYPE <: ComponentDefinition: TypeTag](): Boolean = {
     outToFile();
     val props = Array(
-      ValidationGroup("Example Run", Array(SimValidator(null, 0, "You have run the example successfully!", "", true, true))));
+      ValidationGroup("Example Run",
+                      Array(SimValidator(null, 0, "You have run the example successfully!", "", true, true)))
+    );
     validateAndPrint("Game of Life", props);
   }
 
@@ -148,12 +152,22 @@ package object validation {
     outReset();
     println(outputLinkMsg)
     println(hackyHTMLTableStart);
-    props.foreach(p => println(hackyHTMLTableLine(styleByResult(p.isValid()), msgByResult(p.isValid()), p.id, p.validators.map(_.getResult()).toArray)))
+    props.foreach(
+      p =>
+        println(
+          hackyHTMLTableLine(styleByResult(p.isValid()),
+                             msgByResult(p.isValid()),
+                             p.id,
+                             p.validators.map(_.getResult()).toArray)
+        )
+    )
     println(hackHTMLTableEnd);
     println(finalMsg)
     if (passed) {
       println(successMsg(componentId));
-      println(GradingToken(Encryptor.encrypt(gradeComponent(componentId, props, maxPoints).toJson.toString)).toJson.toString);
+      println(
+        GradingToken(Encryptor.encrypt(gradeComponent(componentId, props, maxPoints).toJson.toString)).toJson.toString
+      );
     } else {
       println(errorMsg(componentId));
     }
@@ -161,8 +175,6 @@ package object validation {
   }
 
   def gradeComponent(id: String, results: Iterable[ValidationGroup], points: Int): ValidationReport = {
-    ValidationReport(id, !results.exists(!_.isValid()),
-      results.map(x => PropertyResult(x.id, x.isValid())), points);
+    ValidationReport(id, !results.exists(!_.isValid()), results.map(x => PropertyResult(x.id, x.isValid())), points);
   }
 }
-

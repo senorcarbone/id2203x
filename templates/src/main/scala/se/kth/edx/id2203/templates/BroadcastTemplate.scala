@@ -29,13 +29,13 @@ class BasicBroadcast(init: Init[BasicBroadcast]) extends ComponentDefinition {
 
   //BasicBroadcast Event Handlers
   beb uponEvent {
-    case x: BEB_Broadcast => handle {
+    case x: BEB_Broadcast => {
       topology.foreach(addr => trigger(PL_Send(addr, x) -> pLink));
     }
   }
 
   pLink uponEvent {
-    case PL_Deliver(src, BEB_Broadcast(payload)) => handle {
+    case PL_Deliver(src, BEB_Broadcast(payload)) => {
       trigger(BEB_Deliver(src, payload) -> beb);
     }
   }
@@ -60,13 +60,13 @@ class EagerReliableBroadcast(init: Init[EagerReliableBroadcast]) extends Compone
 
   //EagerReliableBroadcast Event Handlers
   rb uponEvent {
-    case x @ RB_Broadcast(_) => handle {
+    case x @ RB_Broadcast(_) => {
       trigger(BEB_Broadcast(x) -> beb);
     }
   }
 
   beb uponEvent {
-    case BEB_Deliver(src, y @ RB_Broadcast(payload)) => handle {
+    case BEB_Deliver(src, y @ RB_Broadcast(payload)) => {
       if (!delivered.contains(payload)) {
         delivered += payload;
         trigger(RB_Deliver(src, payload) -> rb);
@@ -106,7 +106,7 @@ class WaitingCRB(init: Init[WaitingCRB]) extends ComponentDefinition {
 
   //WaitingCRB Event Handlers
   crb uponEvent {
-    case x: CRB_Broadcast => handle {
+    case x: CRB_Broadcast => {
       val W = VectorClock(vec);
       W.set(self, lsn);
       lsn = lsn + 1;
@@ -115,7 +115,7 @@ class WaitingCRB(init: Init[WaitingCRB]) extends ComponentDefinition {
   }
 
   rb uponEvent {
-    case x @ RB_Deliver(src: Address, msg: DataMessage) => handle {
+    case x @ RB_Deliver(src: Address, msg: DataMessage) => {
       pending += (src -> msg);
 
       while (pending.exists(_._2.timestamp <= vec)) {
